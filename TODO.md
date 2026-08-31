@@ -16,6 +16,8 @@
 
 ## Floor box
 
+* Solder the RobotDyn dimmer module to the perfboard.
+* Solder the XIAO-C6 to the perfboard.
 * Confirm parts: 5-port WAGO 221-415 for the neutral node (neutral-in,
   neutral-out, dimmer `AC-N`, HDR-15-5 `N`).
 * Breaker (3A resettable) in series with incoming hot.
