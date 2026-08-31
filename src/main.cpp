@@ -10,11 +10,10 @@
 //   hold B+C   -> brightness down
 //
 // Home Assistant: MQTT-discovered `light` with brightness. Touch works with or
-// without the network. Sensitivity is tuned live at http://living-room-lamp.local/
+// without the network. Sensitivity is tuned live at http://living-room-lamp.local.solace.org/
 
 #include <Arduino.h>
 #include <ArduinoOTA.h>
-#include <ESPmDNS.h>
 #include <Preferences.h>
 #include <PsychicHttp.h>
 #include <PubSubClient.h>
@@ -298,7 +297,7 @@ static void setupWebServer() {
   });
 
   server.begin();
-  log_i("Web server up: http://%s.local/", HOSTNAME);
+  log_i("Web server up on %s (%s)", HOSTNAME, WiFi.localIP().toString().c_str());
 }
 
 // ---------------------------------------------------------------------------
@@ -334,7 +333,6 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.setHostname(HOSTNAME);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-  MDNS.begin(HOSTNAME);
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setBufferSize(768);

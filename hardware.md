@@ -92,6 +92,6 @@ Copied verbatim from the build spec — **hot is the only conductor ever switche
 ## Tuning
 
 MPR121 thresholds, minimum-brightness floor, and ramp step are tuned live (and
-persisted to NVS) from the device's web page: `http://living-room-lamp.local/`.
+persisted to NVS) from the device's web page: `http://living-room-lamp.local.solace.org/`.
 The spec is explicit that MPR121 thresholds must be set empirically once the
 copper pads are mounted — bench values on the bare board do not transfer.

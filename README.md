@@ -28,7 +28,7 @@ works with or without the network.
 ```
 pio run -e xiao                # build (set board = seeed_xiao_esp32c3/c6 first)
 pio run -e xiao -t upload      # flash over USB
-pio run -e xiao_ota -t upload  # flash over WiFi (living-room-lamp.local)
+pio run -e xiao_ota -t upload  # flash over WiFi (living-room-lamp.local.solace.org)
 pio test -e native             # gesture FSM unit tests
 ```
 
@@ -38,5 +38,5 @@ and fill in WiFi + MQTT credentials.
 ## Tuning
 
 MPR121 thresholds, minimum brightness, and ramp step are set live and persisted
-to NVS from `http://living-room-lamp.local/` — no re-flash needed. Per the build
+to NVS from `http://living-room-lamp.local.solace.org/` — no re-flash needed. Per the build
 spec, MPR121 thresholds must be tuned on the mounted copper pads.
