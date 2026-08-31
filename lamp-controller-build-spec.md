@@ -15,14 +15,22 @@ touch breakout. Two physical enclosures connected by one 4-conductor cable.
 
 ### Floor box (mains-adjacent, on the floor near the outlet)
 Contains:
-- ESP32 (existing board, developer has prior ESP32 experience)
+- Seeed XIAO ESP32 (C3 or C6 — same footprint; developer has prior ESP32
+  experience). Powered at its `5V` pad from the AC-DC supply below.
+- AC-DC power supply: Mean Well **HDR-15-5** (5V 2.4A 12W, 85-264VAC in),
+  ultra-slim DIN-rail brick, all connections on screw terminals. Fastened to
+  the enclosure floor (short DIN-rail stub, or bonded/zip-tied directly — no
+  rail required). Factory-set 5.0V; verify with a meter before connecting the
+  XIAO, don't adjust the trimmer.
 - AC Dimmer Module, 4A, RobotDyn/rbdimmer-family (phase-cut TRIAC dimmer,
   TRIAC part BT136S), with heatsink adhered via non-conductive thermally
   conductive epoxy
 - Push-button resettable circuit breaker (3A, 125-250VAC) in place of a fuse,
   in series with incoming hot
-- WAGO lever connector (221 series) tapping the existing lamp cord's neutral
-  conductor, feeding the dimmer module's AC-N (zero-cross reference) pin
+- WAGO lever connector on the neutral node (221 series, 5-port / 221-415 —
+  carries neutral-in, neutral-out to the pigtail, the dimmer module's AC-N
+  zero-cross reference, and the HDR-15-5's N; one spare port). A 3-port 221 on
+  the ground node (in, out, HDR-15-5 `⏚`).
 - Panel-mount female receptacle pigtail (15A/125VAC, pre-wired black/white/
   green leads) — this is what the lamp plugs into
 - Input: cut-down cord with molded male plug (this is what plugs into the wall)
@@ -37,6 +45,13 @@ Wiring rules (mains side):
   reference only, not a switched/load path.
 - **Ground** runs straight through from wall plug to outlet pigtail green
   lead, untouched.
+- **5V supply (HDR-15-5)** taps the *un-switched* side: its `L` from the hot
+  after the breaker but before the dimmer's `AC-L IN`; its `N` from the
+  straight-through neutral run (via the same WAGO 221 as the dimmer's `AC-N`);
+  its `⏚` to the ground run. It must stay powered whether the lamp is on or
+  off. The 5V/GND output is isolated SELV — ordinary hookup wire to the XIAO
+  `5V` pad; the XIAO's onboard regulator makes 3.3V for the MPR121 and the
+  dimmer module's logic side.
 - Recommended: use with an upstream inline GFCI adapter (plugs between wall
   outlet and this device's input plug).
 
@@ -160,11 +175,12 @@ the bare onboard pads.
 
 ## Parts/components already on hand (for reference, not purchasing)
 
-- ESP32 dev board
+- Seeed XIAO ESP32 (C3 or C6)
+- Mean Well HDR-15-5 DIN-rail AC-DC supply (5V 2.4A 12W)
 - AC Dimmer Module 4A (rbdimmer/RobotDyn-compatible family)
 - Adafruit MPR121 breakout (#1982)
 - Push-button resettable breaker, 3A 125-250VAC
-- WAGO 221-series lever connectors
+- WAGO 221-series lever connectors (incl. a 5-port 221-415 for the neutral node)
 - Panel-mount outlet pigtail (15A/125VAC)
 - Copper hexagon touch pads (solid copper stock)
 - SSR-25DA — purchased but **not used in this build**; reserved for a future

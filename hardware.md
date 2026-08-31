@@ -20,11 +20,35 @@ layout, so pins below are given by silkscreen D-number and work on either. Set
 | I2C SCL | D5 | — | desk-box cable → MPR121 SCL |
 | Dimmer `Z-C` | D2 | in (GPIO ISR) | dimmer module Z-C |
 | Dimmer `DIM` | D3 | out | dimmer module DIM |
-| 3V3 | 3V3 | — | dimmer module VCC + desk-box cable VIN |
-| GND | GND | — | dimmer module GND + desk-box cable GND |
+| 5V | 5V | in | HDR-15-5 `+V` (5.0 V) |
+| 3V3 | 3V3 | out | dimmer module VCC + desk-box cable VIN |
+| GND | GND | — | HDR-15-5 `−V` + dimmer module GND + desk-box cable GND |
+
+The XIAO is powered at its `5V` pad from the HDR-15-5; its onboard regulator
+supplies the `3V3` pad that feeds the MPR121 (over the cable) and the dimmer
+module's logic side. Do **not** connect USB while the HDR-15-5 is live — the `5V`
+pad ties straight to USB VBUS. First flash on the bench with mains disconnected;
+everything after is OTA.
 
 I2C runs at **100 kHz** (`Wire.setClock(100000)`) for reliability over the 3–5 ft
 inter-box cable. MPR121 address **0x5A** (ADDR tied to GND, default).
+
+## Power supply (Mean Well HDR-15-5)
+
+5V 2.4A DIN-rail AC-DC brick, all screw terminals, ~90 × 17.5 × 55 mm. Fasten to
+the enclosure floor — DIN-rail stub or bonded/zip-tied directly, no rail needed.
+
+| HDR-15-5 terminal | Connects to |
+|-------------------|-------------|
+| `L` | hot, after the 3A breaker, before the dimmer's `AC-L IN` (un-switched) |
+| `N` | neutral straight-through run (same WAGO 221 as the dimmer's `AC-N`) |
+| `⏚` | ground straight-through run |
+| `+V` | XIAO `5V` pad |
+| `−V` | XIAO `GND` |
+
+Ships factory-set at 5.0 V. Power it with the DC output unloaded, meter `+V`/`−V`
+for ~5.0 V, then connect the XIAO. Leave the trimmer alone. Idle draw <0.1 W; the
+XIAO peaks well under 0.5 A, so the 2.4 A rating is large margin.
 
 ## Inter-box cable (floor box → desk box)
 
