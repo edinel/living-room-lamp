@@ -7,10 +7,8 @@ quick reference the firmware is written against.
 
 ## Microcontroller
 
-Seeed **XIAO ESP32** — C3 or C6 (not yet decided). Both share the same 14-pad
-layout, so pins below are given by silkscreen D-number and work on either. Set
-`board =` in [platformio.ini](platformio.ini) (`seeed_xiao_esp32c6` /
-`seeed_xiao_esp32c3`) once the board is chosen.
+Seeed **XIAO ESP32-C6** (`board = seeed_xiao_esp32c6`). Pins below are given by
+silkscreen D-number.
 
 ## Pin map
 

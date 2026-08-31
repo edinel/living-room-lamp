@@ -15,8 +15,8 @@ touch breakout. Two physical enclosures connected by one 4-conductor cable.
 
 ### Floor box (mains-adjacent, on the floor near the outlet)
 Contains:
-- Seeed XIAO ESP32 (C3 or C6 — same footprint; developer has prior ESP32
-  experience). Powered at its `5V` pad from the AC-DC supply below.
+- Seeed XIAO ESP32-C6 (developer has prior ESP32 experience). Powered at its
+  `5V` pad from the AC-DC supply below.
 - AC-DC power supply: Mean Well **HDR-15-5** (5V 2.4A 12W, 85-264VAC in),
   ultra-slim DIN-rail brick, all connections on screw terminals. Fastened to
   the enclosure floor (short DIN-rail stub, or bonded/zip-tied directly — no
@@ -175,7 +175,7 @@ the bare onboard pads.
 
 ## Parts/components already on hand (for reference, not purchasing)
 
-- Seeed XIAO ESP32 (C3 or C6)
+- Seeed XIAO ESP32-C6
 - Mean Well HDR-15-5 DIN-rail AC-DC supply (5V 2.4A 12W)
 - AC Dimmer Module 4A (rbdimmer/RobotDyn-compatible family)
 - Adafruit MPR121 breakout (#1982)

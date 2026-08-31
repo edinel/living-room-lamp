@@ -1,7 +1,7 @@
 # living-room-lamp
 
 Arduino firmware for a pluggable, inline touch-controlled dimmable lamp
-controller. A XIAO ESP32 in a floor box phase-cuts mains power to the lamp; a
+controller. A XIAO ESP32-C6 in a floor box phase-cuts mains power to the lamp; a
 remote desk box with three copper capacitive pads (Adafruit MPR121) is the
 interface. Presents to Home Assistant as an MQTT `light` with brightness; touch
 works with or without the network.
@@ -25,8 +25,8 @@ works with or without the network.
 
 ## Build
 
-```
-pio run -e xiao                # build (set board = seeed_xiao_esp32c3/c6 first)
+```sh
+pio run -e xiao                # build
 pio run -e xiao -t upload      # flash over USB
 pio run -e xiao_ota -t upload  # flash over WiFi (living-room-lamp.local.solace.org)
 pio test -e native             # gesture FSM unit tests

@@ -25,7 +25,7 @@
 #include "arduino_secrets.h"
 
 // ---------------------------------------------------------------------------
-// Pin map — XIAO ESP32 silkscreen (same layout on C3 and C6)
+// Pin map — XIAO ESP32-C6 silkscreen
 // ---------------------------------------------------------------------------
 #define PIN_SDA        D4   // I2C to desk box
 #define PIN_SCL        D5
