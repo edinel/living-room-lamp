@@ -70,6 +70,13 @@ Microcontroller side — galvanically isolated from mains by the onboard opto:
 | Z-C | module → MCU | D2 |
 | DIM | MCU → module | D3 |
 
+**All four of these pins are on the optically isolated low-voltage side — none
+connect to any AC conductor.** The module senses the mains zero-crossing on its
+isolated side and outputs it as a logic pulse on `Z-C`; `DIM` is the gate trigger
+back to the module. VCC is taken from the XIAO `3V3` (not `5V`) so the `Z-C`
+output swings 0–3.3 V and stays within the C6's GPIO limit. The only neutral
+connection anywhere near the dimmer is its mains-side `AC-N` screw terminal.
+
 Firmware uses `rbdimmerESP32` with `RBDIMMER_CURVE_LOGARITHMIC` (dimmable-LED
 bulb). Mains frequency is auto-detected (`rbdimmer_register_zero_cross(pin,0,0)`).
 
