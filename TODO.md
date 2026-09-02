@@ -18,10 +18,8 @@
 
 * Solder the RobotDyn dimmer module to the perfboard.
 * Solder the XIAO-C6 to the perfboard.
-* Confirm parts: 5-port WAGO 221-415 for the neutral node (neutral-in,
-  neutral-out, dimmer `AC-N`, HDR-15-5 `N`).
-* Breaker (3A resettable) in series with incoming hot.
-* HDR-15-5: power it with the DC output unloaded, meter `+V`/`-V` for ~5.0 V,
+* Wait for HDR-15-5 to arrive, then wire it in: power it with the DC output unloaded
+  meter `+V`/`-V` for ~5.0 V,
   leave the trimmer alone, then wire `+V`→XIAO `5V`, `-V`→XIAO `GND`.
 * HDR-15-5 AC in: `L` from hot after the breaker but before the dimmer's
   `AC-L IN` (un-switched); `N` from the neutral run; `⏚` to the ground run.
@@ -32,8 +30,10 @@
   (cover every AC terminal joint), then a mounting coat onto scuffed acrylic.
   Barrier or coat the component side if it ends up facing the perfboard.
 * Mount XIAO/perfboard and the HDR-15-5 (adhesive / zip-tie — no DIN rail).
-* Wire `Wire` I2C (D4/D5), dimmer `Z-C` (D2) / `DIM` (D3), 3V3 + GND to the
-  desk-box cable.
+* Wire the dimmer logic header now: `VCC`→3V3, `GND`→GND, `Z-C`→D2, `DIM`→D3.
+* Hold off on the desk-box cable (3V3 / GND / SDA-D4 / SCL-D5) until the run is
+  measured with the boxes in their final spots. Soldered direct to the perfboard
+  — no room for a connector this time.
 
 ## Desk box
 
@@ -44,7 +44,8 @@
 
 ## Inter-box
 
-* 4-conductor cable, floor → desk, ~3–5 ft: VIN / GND / SDA / SCL.
+* 4-conductor cable, floor → desk: VIN / GND / SDA / SCL. Length TBD — measure
+  with both boxes placed before cutting; spec assumes ~3–5 ft.
 * Ferrite bead clamped at each enclosure exit.
 
 ## Enclosures
