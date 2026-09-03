@@ -10,36 +10,116 @@ constexpr uint8_t REG_ELE0_TOUCH   = 0x41;   // ch n: touch 0x41+2n, release 0x4
 constexpr uint8_t REG_DEBOUNCE     = 0x5B;
 constexpr uint8_t REG_CONFIG1      = 0x5C;
 constexpr uint8_t REG_CONFIG2      = 0x5D;
-constexpr uint8_t REG_ECR          = 0x5E;   // 0x00 = stop, ECR_RUN = run
+constexpr uint8_t REG_ECR          = 0x5E;
 constexpr uint8_t REG_SOFTRESET    = 0x80;
 
 constexpr uint8_t CONFIG2_POR      = 0x24;   // CONFIG2 power-on value — presence check
-constexpr uint8_t ECR_RUN          = 0x8F;   // baseline tracking + all electrodes (Adafruit's value)
+constexpr uint8_t ECR_RUN          = 0x8F;   // baseline tracking + all electrodes
 constexpr uint8_t NUM_ELECTRODES   = 12;
+
+constexpr uint8_t I2C_DELAY_US     = 5;      // ~50-100 kHz depending on GPIO speed
 }
 
+// --- bit-banged I2C -------------------------------------------------------
+// Open-drain emulation: a line is either actively driven LOW or released to the
+// cable's pull-ups (INPUT). Never driven HIGH.
+
+void TouchPanel::sdaHigh() { pinMode(sda_, INPUT_PULLUP); }
+void TouchPanel::sdaLow()  { pinMode(sda_, OUTPUT); digitalWrite(sda_, LOW); }
+void TouchPanel::sclLow()  { pinMode(scl_, OUTPUT); digitalWrite(scl_, LOW); }
+
+bool TouchPanel::sclWaitHigh() {
+  pinMode(scl_, INPUT_PULLUP);
+  for (int i = 0; i < 500; i++) {           // up to ~500 us of clock-stretch
+    if (digitalRead(scl_)) return true;
+    delayMicroseconds(1);
+  }
+  return false;
+}
+void TouchPanel::sclHigh()  { sclWaitHigh(); }
+
+void TouchPanel::i2cDelay() { delayMicroseconds(I2C_DELAY_US); }
+
+void TouchPanel::i2cStart() {
+  sdaHigh(); sclHigh(); i2cDelay();
+  sdaLow();  i2cDelay();
+  sclLow();  i2cDelay();
+}
+
+void TouchPanel::i2cRestart() {
+  sdaHigh(); i2cDelay();
+  sclHigh(); i2cDelay();
+  sdaLow();  i2cDelay();
+  sclLow();  i2cDelay();
+}
+
+void TouchPanel::i2cStop() {
+  sdaLow();  i2cDelay();
+  sclHigh(); i2cDelay();
+  sdaHigh(); i2cDelay();
+}
+
+bool TouchPanel::i2cWrite(uint8_t b) {
+  for (uint8_t i = 0; i < 8; i++) {
+    (b & 0x80) ? sdaHigh() : sdaLow();
+    b <<= 1;
+    i2cDelay();
+    sclHigh(); i2cDelay();
+    sclLow();  i2cDelay();
+  }
+  sdaHigh();                       // release for the ACK bit
+  i2cDelay();
+  sclHigh(); i2cDelay();
+  bool ack = (digitalRead(sda_) == LOW);
+  sclLow();  i2cDelay();
+  return ack;
+}
+
+uint8_t TouchPanel::i2cRead(bool ackAfter) {
+  uint8_t b = 0;
+  sdaHigh();
+  for (uint8_t i = 0; i < 8; i++) {
+    i2cDelay();
+    sclHigh(); i2cDelay();
+    b = (b << 1) | (digitalRead(sda_) ? 1 : 0);
+    sclLow();
+  }
+  ackAfter ? sdaLow() : sdaHigh();
+  i2cDelay();
+  sclHigh(); i2cDelay();
+  sclLow();  i2cDelay();
+  sdaHigh();
+  return b;
+}
+
+// --- MPR121 register access ---------------------------------------------
+
 void TouchPanel::writeReg(uint8_t reg, uint8_t val) {
-  wire_->beginTransmission(addr_);
-  wire_->write(reg);
-  wire_->write(val);
-  wire_->endTransmission(true);
+  i2cStart();
+  i2cWrite(addr_ << 1);
+  i2cWrite(reg);
+  i2cWrite(val);
+  i2cStop();
 }
 
 uint8_t TouchPanel::read8(uint8_t reg) {
-  wire_->beginTransmission(addr_);
-  wire_->write(reg);
-  if (wire_->endTransmission(true) != 0) return 0;   // STOP, not repeated START
-  if (wire_->requestFrom((int)addr_, 1) != 1) return 0;
-  return wire_->read();
+  i2cStart();
+  if (!i2cWrite(addr_ << 1) || !i2cWrite(reg)) { i2cStop(); return 0; }
+  i2cRestart();
+  i2cWrite((addr_ << 1) | 1);
+  uint8_t v = i2cRead(false);
+  i2cStop();
+  return v;
 }
 
 uint16_t TouchPanel::read16(uint8_t reg) {
-  wire_->beginTransmission(addr_);
-  wire_->write(reg);
-  if (wire_->endTransmission(true) != 0) return 0;
-  if (wire_->requestFrom((int)addr_, 2) != 2) return 0;
-  uint16_t lo = wire_->read();
-  uint16_t hi = wire_->read();
+  i2cStart();
+  if (!i2cWrite(addr_ << 1) || !i2cWrite(reg)) { i2cStop(); return 0; }
+  i2cRestart();
+  i2cWrite((addr_ << 1) | 1);
+  uint8_t lo = i2cRead(true);
+  uint8_t hi = i2cRead(false);
+  i2cStop();
   return (uint16_t)((hi << 8) | lo);
 }
 
@@ -50,17 +130,24 @@ void TouchPanel::writeThresholds(uint8_t touch, uint8_t release) {
   }
 }
 
-bool TouchPanel::begin(TwoWire& wire, uint8_t i2cAddr) {
-  wire_ = &wire;
+// --- public -----------------------------------------------------------
+
+bool TouchPanel::begin(uint8_t sdaPin, uint8_t sclPin, uint8_t i2cAddr) {
+  sda_  = sdaPin;
+  scl_  = sclPin;
   addr_ = i2cAddr;
+  sdaHigh();
+  sclHigh();
+  delay(1);
 
   writeReg(REG_SOFTRESET, 0x63);
   delay(1);
   writeReg(REG_ECR, 0x00);                       // electrodes off for config
 
-  if (read8(REG_CONFIG2) != CONFIG2_POR) {
+  uint8_t c2 = read8(REG_CONFIG2);
+  if (c2 != CONFIG2_POR) {
     ok_ = false;
-    log_e("MPR121 not responding at 0x%02X", addr_);
+    log_e("MPR121 bad CONFIG2 = 0x%02X (want 0x%02X) at 0x%02X", c2, CONFIG2_POR, addr_);
     return false;
   }
 
@@ -77,10 +164,11 @@ bool TouchPanel::begin(TwoWire& wire, uint8_t i2cAddr) {
   writeReg(REG_DEBOUNCE, 0x00);
   writeReg(REG_CONFIG1, 0x10);                   // 16 uA charge current
   writeReg(REG_CONFIG2, 0x20);                   // 0.5 us encoding, 1 ms period
-  writeReg(REG_ECR, ECR_RUN);                    // run
+  writeReg(REG_ECR, ECR_RUN);
 
   ok_ = true;
-  log_i("MPR121 ready at 0x%02X (touch=%u release=%u)", addr_, touchThr_, releaseThr_);
+  log_i("MPR121 ready at 0x%02X (bit-bang SDA=%u SCL=%u, touch=%u release=%u)",
+        addr_, sda_, scl_, touchThr_, releaseThr_);
   return true;
 }
 

@@ -1,18 +1,18 @@
 #pragma once
 #include <Arduino.h>
-#include <Wire.h>
 #include "GestureFsm.h"
 
-// Direct MPR121 driver.
+// Direct MPR121 driver over BIT-BANGED I2C.
 //
-// Deliberately NOT Adafruit_MPR121 / Adafruit_BusIO: their register reads use an
-// I2C repeated-START (write_then_read), which the ESP32-C6 Arduino i2c-ng driver
-// rejects with ESP_ERR_INVALID_STATE. Every read here is a register-address
-// write terminated with STOP, followed by a separate read transaction.
+// The ESP32-C6 hardware I2C (Arduino i2c-ng driver, core >= 3.2) returns zeros /
+// ESP_ERR_INVALID_STATE on every register read — a known regression
+// (espressif/arduino-esp32 #11374). Address-ACK and writes work, reads do not.
+// So this talks to the MPR121 by toggling two GPIOs directly: open-drain
+// emulation (drive low / release to the cable's pull-ups), ~50 kHz, which is
+// plenty for a 2-byte status read every poll and immune to the driver bug.
 //
-// poll() does one I2C read of the touch-status word and advances the gesture
-// state machine. Thresholds apply to all 12 channels (the three pads are
-// identical) and are tunable live from the web page.
+// poll() reads the touch-status word and advances the gesture state machine.
+// Thresholds apply to all 12 channels and are tunable live from the web page.
 class TouchPanel {
 public:
   // Electrode channels wired to the pads (spec: non-adjacent for solder room).
@@ -27,7 +27,7 @@ public:
   // Minimum gap between polls.
   static constexpr unsigned long kPollIntervalMs = 50;
 
-  bool begin(TwoWire& wire = Wire, uint8_t i2cAddr = 0x5A);
+  bool begin(uint8_t sdaPin, uint8_t sclPin, uint8_t i2cAddr = 0x5A);
   void setThresholds(uint8_t touch, uint8_t release);
 
   // Call every loop; rate-limited internally. Returns None between poll ticks.
@@ -43,12 +43,26 @@ public:
   uint8_t    releaseThreshold() const { return releaseThr_; }
 
 private:
+  // Bit-banged I2C primitives.
+  void    sdaHigh();
+  void    sdaLow();
+  void    sclHigh();
+  void    sclLow();
+  bool    sclWaitHigh();          // release SCL, wait out any clock-stretch
+  void    i2cDelay();
+  void    i2cStart();
+  void    i2cRestart();
+  void    i2cStop();
+  bool    i2cWrite(uint8_t b);    // returns true if ACKed
+  uint8_t i2cRead(bool ackAfter);
+
+  // MPR121 register access (repeated-START reads — fine when we own the lines).
   void     writeReg(uint8_t reg, uint8_t val);
   uint8_t  read8(uint8_t reg);
-  uint16_t read16(uint8_t reg);          // little-endian (MPR121 order)
+  uint16_t read16(uint8_t reg);   // little-endian (MPR121 order)
   void     writeThresholds(uint8_t touch, uint8_t release);
 
-  TwoWire*      wire_ = nullptr;
+  uint8_t       sda_ = 0, scl_ = 0;
   uint8_t       addr_ = 0x5A;
   GestureFsm    fsm_;
   bool          ok_         = false;

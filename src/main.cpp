@@ -18,7 +18,6 @@
 #include <PsychicHttp.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
-#include <Wire.h>
 
 #include "LampDimmer.h"
 #include "TouchPanel.h"
@@ -326,54 +325,6 @@ static void ensureNetServices() {
 }
 
 // ---------------------------------------------------------------------------
-// One-shot I2C bus scan — logs every device that ACKs, for bring-up diagnosis.
-// ---------------------------------------------------------------------------
-static void scanI2C() {
-  uint8_t found = 0;
-  for (uint8_t addr = 1; addr < 127; addr++) {
-    Wire.beginTransmission(addr);
-    if (Wire.endTransmission() == 0) {
-      log_i("I2C device found at 0x%02X", addr);
-      found++;
-    }
-  }
-  if (!found) log_w("I2C scan: no devices on SDA=%d SCL=%d", PIN_SDA, PIN_SCL);
-}
-
-// Bring-up probe: figure out which MPR121 access pattern actually works on the
-// C6 i2c-ng driver. Reads registers with known non-zero power-on values.
-static uint8_t probeRead(uint8_t reg, bool repeatedStart) {
-  Wire.beginTransmission(0x5A);
-  Wire.write(reg);
-  Wire.endTransmission(!repeatedStart);          // repeatedStart -> no STOP
-  if (Wire.requestFrom((int)0x5A, 1) != 1) return 0xEE;   // 0xEE = read failed
-  return Wire.read();
-}
-
-static void probeMPR121() {
-  // repeated-START, a few tries (does it ever succeed?)
-  for (int i = 0; i < 4; i++)
-    log_i("probe repSTART  CONFIG2(0x5D exp 0x24) try%d = 0x%02X", i, probeRead(0x5D, true));
-
-  // STOP+read of registers whose power-on values are non-zero
-  log_i("probe STOP+read CONFIG1(0x5C exp 0x10)      = 0x%02X", probeRead(0x5C, false));
-  log_i("probe STOP+read CONFIG2(0x5D exp 0x24)      = 0x%02X", probeRead(0x5D, false));
-  log_i("probe STOP+read ELE0_T (0x41 exp 0x0F)      = 0x%02X", probeRead(0x41, false));
-
-  // write DEBOUNCE=0x05 (STOP), then read it back
-  Wire.beginTransmission(0x5A);
-  Wire.write(0x5B);
-  Wire.write(0x05);
-  uint8_t etW = Wire.endTransmission(true);
-  log_i("probe write DEBOUNCE=0x05 endTx=%u, readback = 0x%02X", etW, probeRead(0x5B, false));
-
-  // repeated-START again at 50 kHz
-  Wire.setClock(50000);
-  log_i("probe repSTART@50k CONFIG2                  = 0x%02X", probeRead(0x5D, true));
-  Wire.setClock(100000);
-}
-
-// ---------------------------------------------------------------------------
 // Setup / loop
 // ---------------------------------------------------------------------------
 void setup() {
@@ -382,27 +333,13 @@ void setup() {
 
   loadConfig();
 
-  // I2C on D0/D1 at the default 100 kHz (standard mode — fine over the 3-5 ft
-  // cable). TouchPanel is a direct driver and reuses this bus without a second
-  // Wire.begin() (a re-begin, or a post-begin setClock(), wedges the ESP32-C6
-  // i2c-ng driver into permanent ESP_ERR_INVALID_STATE).
-  // Pin-level sanity: with the MPR121 board's 10 k pull-ups, both lines should
-  // idle high. A 0 here means that line is stuck low (short, or wrong pad).
-  pinMode(PIN_SDA, INPUT);
-  pinMode(PIN_SCL, INPUT);
-  delay(5);
-  log_i("I2C idle before begin: SDA(D0)=%d SCL(D1)=%d  (expect 1 / 1)",
-        digitalRead(PIN_SDA), digitalRead(PIN_SCL));
-
-  Wire.begin(PIN_SDA, PIN_SCL);
-  scanI2C();
-  probeMPR121();
-
   if (!lamp.begin(PIN_DIMMER_ZC, PIN_DIMMER_DIM))
     log_e("dimmer init failed — lamp control unavailable");
   lamp.setConfig(g_cfg.minLevel, g_cfg.rampStep);
 
-  if (!touch.begin(Wire, 0x5A))
+  // Bit-banged I2C on D0/D1 — the ESP32-C6 hardware I2C driver can't read
+  // (arduino-esp32 #11374). See lib/TouchPanel.
+  if (!touch.begin(PIN_SDA, PIN_SCL, 0x5A))
     log_e("touch panel init failed — touch control unavailable");
   touch.setThresholds(g_cfg.touchThr, g_cfg.relThr);
 
