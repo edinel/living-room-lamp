@@ -50,14 +50,20 @@ XIAO peaks well under 0.5 A, so the 2.4 A rating is large margin.
 
 ## Inter-box cable (floor box → desk box)
 
-Single 4-conductor cable, ferrite bead clamped at each enclosure exit:
+Single 4-conductor cable, ferrite bead clamped at each enclosure exit.
+Wire colours follow the house I2C convention (as in `edinel/AirSensor`):
 
-| Wire | Signal |
-|------|--------|
-| 1 | VIN — 3.3 V from XIAO |
-| 2 | GND |
-| 3 | SDA |
-| 4 | SCL |
+| Colour | Signal | Floor-box end | Desk-box end |
+| --- | --- | --- | --- |
+| Red | VIN — 3.3 V from XIAO | XIAO `3V3` node | MPR121 `VIN` |
+| Black | GND | XIAO `GND` node | MPR121 `GND` |
+| White | SDA | XIAO `D4` | MPR121 `SDA` |
+| Yellow | SCL | XIAO `D5` | MPR121 `SCL` |
+
+The two ends join at a labelled 4-circuit inline lever splice in the floor box
+(channel 1 = 3V3/red, 2 = GND/black, 3 = SDA/white, 4 = SCL/yellow) so the desk
+run can be cut and terminated after the boxes are placed. No polarisation on the
+splice — swapping red/black destroys the MPR121, so label the connector body.
 
 ## Dimmer module (RobotDyn / rbdimmer family, BT136S TRIAC, 4 A)
 
@@ -82,8 +88,8 @@ bulb). Mains frequency is auto-detected (`rbdimmer_register_zero_cross(pin,0,0)`
 
 ## Touch panel (Adafruit MPR121, #1982)
 
-Cable side: `VIN, GND, SDA, SCL` only. `3Vo`, `IRQ`, `ADDR` unused (polled, not
-interrupt-driven).
+Cable side: `VIN` (red), `GND` (black), `SDA` (white), `SCL` (yellow) only.
+`3Vo`, `IRQ`, `ADDR` unused (polled, not interrupt-driven).
 
 | MPR121 channel | Pad | Position |
 |----------------|-----|----------|

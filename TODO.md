@@ -31,9 +31,13 @@
   Barrier or coat the component side if it ends up facing the perfboard.
 * Mount XIAO/perfboard and the HDR-15-5 (adhesive / zip-tie — no DIN rail).
 * Wire the dimmer logic header now: `VCC`→3V3, `GND`→GND, `Z-C`→D2, `DIM`→D3.
-* Hold off on the desk-box cable (3V3 / GND / SDA-D4 / SCL-D5) until the run is
-  measured with the boxes in their final spots. Soldered direct to the perfboard
-  — no room for a connector this time.
+* Solder short tails from the perfboard (3V3 / GND / D4 / D5) into a labelled
+  4-circuit inline lever splice (SPL-4): channel 1 = 3V3/red, 2 = GND/black,
+  3 = SDA/white, 4 = SCL/yellow. Write the map on the connector body — it isn't
+  keyed, and red↔black swapped kills the MPR121.
+* Hold off on the desk cable itself until the run is measured with the boxes in
+  their final spots, then lever it into the other side of the splice. Cable
+  colours: red=3V3, black=GND, white=SDA, yellow=SCL (house I2C convention).
 
 ## Desk box
 
