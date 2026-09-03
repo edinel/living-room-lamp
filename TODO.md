@@ -26,15 +26,18 @@
 * Hot path: plug → breaker → dimmer `AC-L IN` → `AC-L LOAD` → pigtail black.
 * Neutral and ground straight through to the pigtail.
 * No heatsink on the dimmer (one LED bulb ≈ 0.2 W in the TRIAC).
+* If I2C is flaky over the desk cable: add 4.7 kΩ SDA/SCL pull-ups to 3V3 at the
+  floor-box end (MPR121's onboard 10 kΩ is marginal for a 3–5 ft run).
 * Encapsulate the dimmer module: hot-glue the back — insulation coat first
   (cover every AC terminal joint), then a mounting coat onto scuffed acrylic.
   Barrier or coat the component side if it ends up facing the perfboard.
 * Mount XIAO/perfboard and the HDR-15-5 (adhesive / zip-tie — no DIN rail).
 * Wire the dimmer logic header now: `VCC`→3V3, `GND`→GND, `Z-C`→D2, `DIM`→D3.
-* Solder short tails from the perfboard (3V3 / GND / D4 / D5) into a labelled
-  4-circuit inline lever splice (SPL-4): channel 1 = 3V3/red, 2 = GND/black,
-  3 = SDA/white, 4 = SCL/yellow. Write the map on the connector body — it isn't
-  keyed, and red↔black swapped kills the MPR121.
+* Solder short tails from the perfboard (3V3 / GND / D0=SDA / D1=SCL) into a
+  labelled 4-circuit inline lever splice (SPL-4): channel 1 = 3V3/red,
+  2 = GND/black, 3 = SDA/white, 4 = SCL/yellow. Write the map on the connector
+  body — it isn't keyed, and red↔black swapped kills the MPR121 (white↔yellow
+  is harmless).
 * Hold off on the desk cable itself until the run is measured with the boxes in
   their final spots, then lever it into the other side of the splice. Cable
   colours: red=3V3, black=GND, white=SDA, yellow=SCL (house I2C convention).

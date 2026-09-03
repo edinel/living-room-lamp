@@ -27,8 +27,8 @@
 // ---------------------------------------------------------------------------
 // Pin map — XIAO ESP32-C6 silkscreen
 // ---------------------------------------------------------------------------
-#define PIN_SDA        D4   // I2C to desk box
-#define PIN_SCL        D5
+#define PIN_SDA        D0   // I2C to desk box
+#define PIN_SCL        D1
 #define PIN_DIMMER_ZC  D2   // dimmer module Z-C (input)
 #define PIN_DIMMER_DIM D3   // dimmer module DIM (output)
 

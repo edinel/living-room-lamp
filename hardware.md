@@ -14,8 +14,8 @@ silkscreen D-number.
 
 | Signal | XIAO pad | Direction | Goes to |
 |--------|----------|-----------|---------|
-| I2C SDA | D4 | — | desk-box cable → MPR121 SDA |
-| I2C SCL | D5 | — | desk-box cable → MPR121 SCL |
+| I2C SDA | D0 | — | desk-box cable → MPR121 SDA |
+| I2C SCL | D1 | — | desk-box cable → MPR121 SCL |
 | Dimmer `Z-C` | D2 | in (GPIO ISR) | dimmer module Z-C |
 | Dimmer `DIM` | D3 | out | dimmer module DIM |
 | 5V | 5V | in | HDR-15-5 `+V` (5.0 V) |
@@ -57,13 +57,15 @@ Wire colours follow the house I2C convention (as in `edinel/AirSensor`):
 | --- | --- | --- | --- |
 | Red | VIN — 3.3 V from XIAO | XIAO `3V3` node | MPR121 `VIN` |
 | Black | GND | XIAO `GND` node | MPR121 `GND` |
-| White | SDA | XIAO `D4` | MPR121 `SDA` |
-| Yellow | SCL | XIAO `D5` | MPR121 `SCL` |
+| White | SDA | XIAO `D0` | MPR121 `SDA` |
+| Yellow | SCL | XIAO `D1` | MPR121 `SCL` |
 
-The two ends join at a labelled 4-circuit inline lever splice in the floor box
-(channel 1 = 3V3/red, 2 = GND/black, 3 = SDA/white, 4 = SCL/yellow) so the desk
-run can be cut and terminated after the boxes are placed. No polarisation on the
-splice — swapping red/black destroys the MPR121, so label the connector body.
+The two ends join at a labelled 4-circuit inline lever splice (SPL-4) in the
+floor box (channel 1 = 3V3/red, 2 = GND/black, 3 = SDA/white, 4 = SCL/yellow) so
+the desk run can be cut and terminated after the boxes are placed. No
+polarisation on the splice — swapping red/black destroys the MPR121, so label
+the connector body. (Swapping white/yellow is harmless — the bus just fails to
+enumerate until corrected.)
 
 ## Dimmer module (RobotDyn / rbdimmer family, BT136S TRIAC, 4 A)
 
