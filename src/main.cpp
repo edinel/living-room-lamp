@@ -62,7 +62,8 @@ static TuningConfig g_cfg;
 
 static void loadConfig() {
   Preferences p;
-  p.begin("lamp", /*readOnly=*/true);
+  // Read-write so the namespace is created on first boot (no nvs_open NOT_FOUND).
+  p.begin("lamp", /*readOnly=*/false);
   g_cfg.touchThr = p.getUChar("touchThr", g_cfg.touchThr);
   g_cfg.relThr   = p.getUChar("relThr",   g_cfg.relThr);
   g_cfg.minLevel = p.getUChar("minLevel", g_cfg.minLevel);
@@ -272,7 +273,7 @@ static uint8_t jsonU8(const String& body, const char* key, uint8_t fallback,
   return (uint8_t)constrain(v, (long)lo, (long)hi);
 }
 
-static void setupWebServer() {
+static void registerWebRoutes() {
   server.on("/", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
     return response->send(200, "text/html", PAGE_HTML);
   });
@@ -295,20 +296,33 @@ static void setupWebServer() {
 
     return response->send(200, "application/json", "{\"ok\":true}");
   });
-
-  server.begin();
-  log_i("Web server up on %s (%s)", HOSTNAME, WiFi.localIP().toString().c_str());
 }
 
 // ---------------------------------------------------------------------------
 // OTA
 // ---------------------------------------------------------------------------
-static void setupOTA() {
+static void configureOTA() {
   ArduinoOTA.setHostname(HOSTNAME);
   ArduinoOTA.onStart([]() { log_i("OTA start"); });
   ArduinoOTA.onEnd([]()   { log_i("OTA done — rebooting"); });
   ArduinoOTA.onError([](ota_error_t e) { log_e("OTA error %u", e); });
-  ArduinoOTA.begin();
+}
+
+// ---------------------------------------------------------------------------
+// Bring up the HTTP server + OTA once WiFi has an interface; the async HTTP
+// server can't bind before then. Re-arm on reconnect (Jessa-Bedside pattern).
+// ---------------------------------------------------------------------------
+static void ensureNetServices() {
+  static bool up = false;
+  const bool connected = (WiFi.status() == WL_CONNECTED);
+  if (connected && !up) {
+    server.begin();
+    ArduinoOTA.begin();
+    up = true;
+    log_i("Net services up on %s (%s)", HOSTNAME, WiFi.localIP().toString().c_str());
+  } else if (!connected && up) {
+    up = false;   // server.begin() / ArduinoOTA.begin() re-run on reconnect
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -319,8 +333,11 @@ void setup() {
 
   loadConfig();
 
-  Wire.begin(PIN_SDA, PIN_SCL);
-  Wire.setClock(100000);   // standard mode — reliable over the 3-5 ft cable
+  // Route I2C to D0/D1 for the next Wire.begin(). Adafruit_MPR121::begin()
+  // performs that begin() internally — calling Wire.begin() here as well leaves
+  // the ESP32 core's i2c-ng driver in ESP_ERR_INVALID_STATE (every transfer
+  // then fails and the MPR121 reads as absent).
+  Wire.setPins(PIN_SDA, PIN_SCL);
 
   if (!lamp.begin(PIN_DIMMER_ZC, PIN_DIMMER_DIM))
     log_e("dimmer init failed — lamp control unavailable");
@@ -328,6 +345,7 @@ void setup() {
 
   if (!touch.begin(Wire, 0x5A))
     log_e("touch panel init failed — touch control unavailable");
+  Wire.setClock(100000);   // standard mode — reliable over the 3-5 ft cable
   touch.setThresholds(g_cfg.touchThr, g_cfg.relThr);
 
   WiFi.mode(WIFI_STA);
@@ -338,8 +356,8 @@ void setup() {
   mqtt.setBufferSize(768);
   mqtt.setCallback(onMqttMessage);
 
-  setupWebServer();
-  setupOTA();
+  registerWebRoutes();
+  configureOTA();
 }
 
 static void rampTick(int8_t dir) {
@@ -352,8 +370,9 @@ static void rampTick(int8_t dir) {
 }
 
 void loop() {
-  ArduinoOTA.handle();
   checkWiFi();
+  ensureNetServices();
+  ArduinoOTA.handle();
   checkMQTT();
   mqtt.loop();
 
