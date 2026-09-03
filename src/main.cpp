@@ -340,32 +340,37 @@ static void scanI2C() {
   if (!found) log_w("I2C scan: no devices on SDA=%d SCL=%d", PIN_SDA, PIN_SCL);
 }
 
-// Bring-up probe: read MPR121 CONFIG2 (0x5D, POR value 0x24) two ways to learn
-// which read pattern the C6 i2c-ng driver + this part actually support.
+// Bring-up probe: figure out which MPR121 access pattern actually works on the
+// C6 i2c-ng driver. Reads registers with known non-zero power-on values.
+static uint8_t probeRead(uint8_t reg, bool repeatedStart) {
+  Wire.beginTransmission(0x5A);
+  Wire.write(reg);
+  Wire.endTransmission(!repeatedStart);          // repeatedStart -> no STOP
+  if (Wire.requestFrom((int)0x5A, 1) != 1) return 0xEE;   // 0xEE = read failed
+  return Wire.read();
+}
+
 static void probeMPR121() {
-  const uint8_t addr = 0x5A, reg = 0x5D;
+  // repeated-START, a few tries (does it ever succeed?)
+  for (int i = 0; i < 4; i++)
+    log_i("probe repSTART  CONFIG2(0x5D exp 0x24) try%d = 0x%02X", i, probeRead(0x5D, true));
 
-  // (a) repeated-START: write reg, no STOP, then read
-  Wire.beginTransmission(addr);
-  Wire.write(reg);
-  uint8_t etA = Wire.endTransmission(false);
-  int gotA = Wire.requestFrom((int)addr, 1);
-  int valA = gotA ? Wire.read() : -1;
-  log_i("probe CONFIG2 repeated-START: endTx=%u got=%d val=0x%02X", etA, gotA, valA);
+  // STOP+read of registers whose power-on values are non-zero
+  log_i("probe STOP+read CONFIG1(0x5C exp 0x10)      = 0x%02X", probeRead(0x5C, false));
+  log_i("probe STOP+read CONFIG2(0x5D exp 0x24)      = 0x%02X", probeRead(0x5D, false));
+  log_i("probe STOP+read ELE0_T (0x41 exp 0x0F)      = 0x%02X", probeRead(0x41, false));
 
-  // (b) STOP then separate read
-  Wire.beginTransmission(addr);
-  Wire.write(reg);
-  uint8_t etB = Wire.endTransmission(true);
-  int gotB = Wire.requestFrom((int)addr, 1);
-  int valB = gotB ? Wire.read() : -1;
-  log_i("probe CONFIG2 STOP+read:      endTx=%u got=%d val=0x%02X", etB, gotB, valB);
+  // write DEBOUNCE=0x05 (STOP), then read it back
+  Wire.beginTransmission(0x5A);
+  Wire.write(0x5B);
+  Wire.write(0x05);
+  uint8_t etW = Wire.endTransmission(true);
+  log_i("probe write DEBOUNCE=0x05 endTx=%u, readback = 0x%02X", etW, probeRead(0x5B, false));
 
-  // (c) STOP, then read register 0x00 with no address write — tells us whether
-  //     the address pointer survived the STOP in (b) (would read 0x5D's data if so)
-  int gotC = Wire.requestFrom((int)addr, 1);
-  int valC = gotC ? Wire.read() : -1;
-  log_i("probe bare read after (b):    got=%d val=0x%02X", gotC, valC);
+  // repeated-START again at 50 kHz
+  Wire.setClock(50000);
+  log_i("probe repSTART@50k CONFIG2                  = 0x%02X", probeRead(0x5D, true));
+  Wire.setClock(100000);
 }
 
 // ---------------------------------------------------------------------------
