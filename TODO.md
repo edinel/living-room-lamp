@@ -2,17 +2,20 @@
 
 ## Firmware
 
+* ~~Bench: firmware boots, WiFi/MQTT/HA/web all up, MPR121 reads (bit-bang I2C —
+  hardware I2C is broken on the C6, see hardware.md), gestures work.~~ ✓
 * Bench-test the dimmer chain: XIAO-C6 → RobotDyn module → real bulb. Confirm
   `rbdimmerESP32` drives the DIM pin and phase-cuts (scope or visible dimming)
-  **before** anything gets encapsulated.
-* First flash over USB with mains disconnected (the `5V` pad ties to USB VBUS).
-  Everything after that is OTA (`pio run -e xiao_ota -t upload`).
-* Tune MPR121 `setThresholds()` on the mounted copper pads via the web page
+  **before** anything gets encapsulated. (No mains connected yet — this is the
+  one thing still unverified.)
+* Tune MPR121 thresholds on the *mounted* copper pads via the web page
   (`http://living-room-lamp.local.solace.org/`) — bench values on the bare
   board do not transfer.
 * Feel-test and set the minimum-brightness floor and ramp step from the same
   page; they persist to NVS.
-* Merge `firmware-initial` → `main` once the above checks out.
+* Drop `-DARDUINO_USB_CDC_ON_BOOT=1` / the wait-for-Serial once bring-up is done
+  (optional — harmless to keep).
+* Merge `firmware-initial` → `main` once the dimmer is verified.
 
 ## Floor box
 

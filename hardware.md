@@ -102,6 +102,19 @@ Cable side: `VIN` (red), `GND` (black), `SDA` (white), `SCL` (yellow) only.
 Non-adjacent channels chosen for solder clearance at the header. Each copper pad
 is a single-wire connection to its channel — no per-pad ground.
 
+### I2C is bit-banged, not hardware
+
+`lib/TouchPanel` drives the MPR121 with a software (GPIO-toggled) I2C
+implementation on `D0`/`D1`, **not** `Wire`. The ESP32-C6 hardware I2C (Arduino
+core ≥ 3.2, "i2c-ng" driver) returns zeros / `ESP_ERR_INVALID_STATE` on every
+register *read* — a known upstream regression,
+[espressif/arduino-esp32 #11374](https://github.com/espressif/arduino-esp32/issues/11374).
+Address-ACK and writes work; reads do not. Confirmed on this board with a boot
+probe (writes ACKed, `CONFIG1`/`CONFIG2` reads came back `0x00`). The only fix
+from Espressif's side is core 3.1.3, which would drag the whole platform (and the
+rbdimmer / PsychicHttp builds) backwards, so the workaround lives in `TouchPanel`
+instead. Revisit if the driver is ever fixed — `git log` for `bit-bang`.
+
 Gestures (all multi-pad AND, for TRIAC-noise rejection):
 
 | Touch | Action |
