@@ -326,6 +326,21 @@ static void ensureNetServices() {
 }
 
 // ---------------------------------------------------------------------------
+// One-shot I2C bus scan — logs every device that ACKs, for bring-up diagnosis.
+// ---------------------------------------------------------------------------
+static void scanI2C() {
+  uint8_t found = 0;
+  for (uint8_t addr = 1; addr < 127; addr++) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {
+      log_i("I2C device found at 0x%02X", addr);
+      found++;
+    }
+  }
+  if (!found) log_w("I2C scan: no devices on SDA=%d SCL=%d", PIN_SDA, PIN_SCL);
+}
+
+// ---------------------------------------------------------------------------
 // Setup / loop
 // ---------------------------------------------------------------------------
 void setup() {
@@ -333,12 +348,13 @@ void setup() {
 
   loadConfig();
 
-  // Route I2C to D0/D1, then let Adafruit_MPR121::begin() perform the single
-  // Wire.begin() (default 100 kHz — standard mode, fine over the 3-5 ft cable).
-  // Do NOT also call Wire.begin()/Wire.setClock() here: on the ESP32-C6 i2c-ng
-  // driver a second begin() or a post-begin setClock() wedges the bus into
-  // permanent ESP_ERR_INVALID_STATE.
-  Wire.setPins(PIN_SDA, PIN_SCL);
+  // I2C on D0/D1 at the default 100 kHz (standard mode — fine over the 3-5 ft
+  // cable). Do NOT call Wire.setClock() after this: on the ESP32-C6 i2c-ng
+  // driver a post-begin setClock() wedges the bus into permanent
+  // ESP_ERR_INVALID_STATE. Adafruit_MPR121::begin() calls Wire.begin() again;
+  // that only logs a benign "already started" warning.
+  Wire.begin(PIN_SDA, PIN_SCL);
+  scanI2C();
 
   if (!lamp.begin(PIN_DIMMER_ZC, PIN_DIMMER_DIM))
     log_e("dimmer init failed — lamp control unavailable");
