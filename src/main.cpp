@@ -333,10 +333,11 @@ void setup() {
 
   loadConfig();
 
-  // Route I2C to D0/D1 for the next Wire.begin(). Adafruit_MPR121::begin()
-  // performs that begin() internally — calling Wire.begin() here as well leaves
-  // the ESP32 core's i2c-ng driver in ESP_ERR_INVALID_STATE (every transfer
-  // then fails and the MPR121 reads as absent).
+  // Route I2C to D0/D1, then let Adafruit_MPR121::begin() perform the single
+  // Wire.begin() (default 100 kHz — standard mode, fine over the 3-5 ft cable).
+  // Do NOT also call Wire.begin()/Wire.setClock() here: on the ESP32-C6 i2c-ng
+  // driver a second begin() or a post-begin setClock() wedges the bus into
+  // permanent ESP_ERR_INVALID_STATE.
   Wire.setPins(PIN_SDA, PIN_SCL);
 
   if (!lamp.begin(PIN_DIMMER_ZC, PIN_DIMMER_DIM))
@@ -345,7 +346,6 @@ void setup() {
 
   if (!touch.begin(Wire, 0x5A))
     log_e("touch panel init failed — touch control unavailable");
-  Wire.setClock(100000);   // standard mode — reliable over the 3-5 ft cable
   touch.setThresholds(g_cfg.touchThr, g_cfg.relThr);
 
   WiFi.mode(WIFI_STA);
