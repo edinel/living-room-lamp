@@ -386,6 +386,14 @@ void setup() {
   // cable). TouchPanel is a direct driver and reuses this bus without a second
   // Wire.begin() (a re-begin, or a post-begin setClock(), wedges the ESP32-C6
   // i2c-ng driver into permanent ESP_ERR_INVALID_STATE).
+  // Pin-level sanity: with the MPR121 board's 10 k pull-ups, both lines should
+  // idle high. A 0 here means that line is stuck low (short, or wrong pad).
+  pinMode(PIN_SDA, INPUT);
+  pinMode(PIN_SCL, INPUT);
+  delay(5);
+  log_i("I2C idle before begin: SDA(D0)=%d SCL(D1)=%d  (expect 1 / 1)",
+        digitalRead(PIN_SDA), digitalRead(PIN_SCL));
+
   Wire.begin(PIN_SDA, PIN_SCL);
   scanI2C();
   probeMPR121();
