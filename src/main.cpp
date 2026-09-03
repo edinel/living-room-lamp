@@ -349,14 +349,11 @@ void setup() {
   loadConfig();
 
   // I2C on D0/D1 at the default 100 kHz (standard mode — fine over the 3-5 ft
-  // cable). On the ESP32-C6 i2c-ng driver, a SECOND Wire.begin() (or a
-  // post-begin setClock()) wedges the bus into permanent ESP_ERR_INVALID_STATE.
-  // Adafruit_MPR121::begin() always calls Wire.begin() itself, so scan on our
-  // own begin, then Wire.end() to hand the library a clean slate.
+  // cable). TouchPanel is a direct driver and reuses this bus without a second
+  // Wire.begin() (a re-begin, or a post-begin setClock(), wedges the ESP32-C6
+  // i2c-ng driver into permanent ESP_ERR_INVALID_STATE).
   Wire.begin(PIN_SDA, PIN_SCL);
   scanI2C();
-  Wire.end();
-  Wire.setPins(PIN_SDA, PIN_SCL);   // reassert pins for the library's begin()
 
   if (!lamp.begin(PIN_DIMMER_ZC, PIN_DIMMER_DIM))
     log_e("dimmer init failed — lamp control unavailable");
