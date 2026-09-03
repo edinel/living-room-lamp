@@ -340,11 +340,40 @@ static void scanI2C() {
   if (!found) log_w("I2C scan: no devices on SDA=%d SCL=%d", PIN_SDA, PIN_SCL);
 }
 
+// Bring-up probe: read MPR121 CONFIG2 (0x5D, POR value 0x24) two ways to learn
+// which read pattern the C6 i2c-ng driver + this part actually support.
+static void probeMPR121() {
+  const uint8_t addr = 0x5A, reg = 0x5D;
+
+  // (a) repeated-START: write reg, no STOP, then read
+  Wire.beginTransmission(addr);
+  Wire.write(reg);
+  uint8_t etA = Wire.endTransmission(false);
+  int gotA = Wire.requestFrom((int)addr, 1);
+  int valA = gotA ? Wire.read() : -1;
+  log_i("probe CONFIG2 repeated-START: endTx=%u got=%d val=0x%02X", etA, gotA, valA);
+
+  // (b) STOP then separate read
+  Wire.beginTransmission(addr);
+  Wire.write(reg);
+  uint8_t etB = Wire.endTransmission(true);
+  int gotB = Wire.requestFrom((int)addr, 1);
+  int valB = gotB ? Wire.read() : -1;
+  log_i("probe CONFIG2 STOP+read:      endTx=%u got=%d val=0x%02X", etB, gotB, valB);
+
+  // (c) STOP, then read register 0x00 with no address write — tells us whether
+  //     the address pointer survived the STOP in (b) (would read 0x5D's data if so)
+  int gotC = Wire.requestFrom((int)addr, 1);
+  int valC = gotC ? Wire.read() : -1;
+  log_i("probe bare read after (b):    got=%d val=0x%02X", gotC, valC);
+}
+
 // ---------------------------------------------------------------------------
 // Setup / loop
 // ---------------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
+  while (!Serial && millis() < 2000) delay(10);   // let the USB-CDC host attach
 
   loadConfig();
 
@@ -354,6 +383,7 @@ void setup() {
   // i2c-ng driver into permanent ESP_ERR_INVALID_STATE).
   Wire.begin(PIN_SDA, PIN_SCL);
   scanI2C();
+  probeMPR121();
 
   if (!lamp.begin(PIN_DIMMER_ZC, PIN_DIMMER_DIM))
     log_e("dimmer init failed — lamp control unavailable");
