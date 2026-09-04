@@ -210,8 +210,8 @@ th:first-child,td:first-child{text-align:left}label{display:block;margin:.6rem 0
 input{width:5rem}.on{color:#0a0;font-weight:bold}.bad{color:#c00;font-weight:bold}
 #otaBanner{display:none;background:#fee;border:1px solid #c00;border-radius:.4rem;padding:.6rem 1rem;margin:1rem 0}
 </style></head><body>
-<h1>Living Room  Lamp</h1>
-<p style="opacity:.55;font-size:.8rem;margin-top:-.6rem">build <span id="build"></span></p>
+<h1>Living Room Lamp</h1>
+<p style="opacity:.55;font-size:.8rem;margin-top:-.6rem">build <span id="build"></span> ✓</p>
 <p>Lamp: <span id="lamp"></span> &nbsp; Gesture state: <b id="fsm"></b> &nbsp; Mains: <span id="hz"></span>
 &nbsp; Z-C pulses: <span id="zc"></span> &nbsp; WiFi: <span id="rssi"></span></p>
 <div id="otaBanner">🛠 <b>OTA mode</b> — touch and remote control are frozen. Flash now, or
