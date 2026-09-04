@@ -8,6 +8,15 @@
   (Got here via a real wiring bug — HDR-15-5 `L` was tapped off the dimmer's
   *switched* output instead of the line side; see hardware.md's "Build
   pitfall.")
+* ~~OTA push validated end-to-end.~~ ✓ Was flaky/crashing at first — root
+  caused via a serial crash dump + `addr2line` against the exact flashed ELF:
+  `rbdimmerESP32`'s zero-cross ISR (`on_zero_cross_phase`, fires ~120x/sec)
+  calls ESP-IDF's `gpio_set_level()`, which isn't IRAM-resident, so it panics
+  if that fires while an OTA flash write has the cache disabled. Not power,
+  not EMI, not mains state — all of those were red herrings chased first.
+  Fixed: `LampDimmer::shutdownForOTA()` (`rbdimmer_deinit()`) is called from
+  "Prepare for OTA update", removing the ISR entirely before any flash risk.
+  Cancelling OTA mode now reboots (no safe in-place resume after deinit).
 * Bulb in the socket: confirm `rbdimmerESP32` actually phase-cuts and dims —
   incandescent first if available (cleanest test), then the real dimmable LED.
   Watch for flicker/buzz/warmth. This is the one thing still unverified.
