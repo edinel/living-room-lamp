@@ -41,10 +41,8 @@
 * No heatsink on the dimmer (one LED bulb ≈ 0.2 W in the TRIAC).
 * If I2C is flaky over the desk cable: add 4.7 kΩ SDA/SCL pull-ups to 3V3 at the
   floor-box end (MPR121's onboard 10 kΩ is marginal for a 3–5 ft run).
-* Encapsulate the dimmer module: hot-glue the back — insulation coat first
-  (cover every AC terminal joint), then a mounting coat onto scuffed acrylic.
-  Barrier or coat the component side if it ends up facing the perfboard.
-* Mount XIAO/perfboard and the HDR-15-5 (adhesive / zip-tie — no DIN rail).
+* ~~Encapsulate the dimmer module in hot glue, front and back.~~ ✓
+* ~~Mount XIAO/perfboard and the HDR-15-5 in the floor box.~~ ✓
 * ~~Wire the dimmer logic header: `VCC`→3V3, `GND`→GND, `Z-C`→D2, `DIM`→D3.~~ ✓
 * Solder short tails from the perfboard (3V3 / GND / D0=SDA / D1=SCL) into a
   labelled 4-circuit inline lever splice (SPL-4): channel 1 = 3V3/red,
@@ -70,10 +68,15 @@
 
 ## Enclosures
 
-* Design + cut the floor box and desk box (no boxes.py URLs yet).
+* ~~Floor box built, everything mounted inside, running self-powered off
+  mains through it.~~ ✓
+* Desk box: front panel + copper pads built and wired; the 1/8" ply case
+  itself is not yet glued shut — do the assembled-box touch test on the
+  tuning page first (see "Desk box" above), then glue closed.
 
 ## Before first power-on
 
-* Upstream inline GFCI adapter between wall outlet and this device.
+* Upstream inline GFCI adapter between wall outlet and this device — confirm
+  it's actually in the chain (not just re-verified during bring-up).
 * Visual check: no exposed mains metal touching anything; module back fully
   covered; strain relief on the input cord and the pigtail.
