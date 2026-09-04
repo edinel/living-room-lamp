@@ -23,6 +23,13 @@
 #include "TouchPanel.h"
 #include "arduino_secrets.h"
 
+// Git short SHA this binary was built from — set by scripts/build_id.py.
+// Fallback here only so editors/native builds that skip the PIO hook still
+// compile; the real firmware always gets the injected value.
+#ifndef BUILD_ID
+#define BUILD_ID "unknown"
+#endif
+
 // ---------------------------------------------------------------------------
 // Pin map — XIAO ESP32-C6 silkscreen
 // ---------------------------------------------------------------------------
@@ -204,6 +211,7 @@ input{width:5rem}.on{color:#0a0;font-weight:bold}.bad{color:#c00;font-weight:bol
 #otaBanner{display:none;background:#fee;border:1px solid #c00;border-radius:.4rem;padding:.6rem 1rem;margin:1rem 0}
 </style></head><body>
 <h1>Living Room Lamp</h1>
+<p style="opacity:.55;font-size:.8rem;margin-top:-.6rem">build <span id="build"></span></p>
 <p>Lamp: <span id="lamp"></span> &nbsp; Gesture state: <b id="fsm"></b> &nbsp; Mains: <span id="hz"></span>
 &nbsp; Z-C pulses: <span id="zc"></span></p>
 <div id="otaBanner">🛠 <b>OTA mode</b> — touch and remote control are frozen. Flash now, or
@@ -253,7 +261,7 @@ async function setOtaMode(on){
 }
 $('#otaEnter').onclick=()=>setOtaMode(true);
 $('#otaExit').onclick=()=>setOtaMode(false);
-(async()=>{ applyCfg((await (await fetch('/api/status')).json()).cfg); })();
+(async()=>{ const s=await (await fetch('/api/status')).json(); applyCfg(s.cfg); $('#build').textContent=s.buildId; })();
 tick();setInterval(tick,400);
 </script></body></html>)HTML";
 
@@ -271,7 +279,8 @@ static void sendStatusJson(PsychicResponse* response) {
   };
 
   String j = "{";
-  j += "\"on\":" + String(lamp.isOn() ? "true" : "false");
+  j += "\"buildId\":\"" + String(BUILD_ID) + "\"";
+  j += ",\"on\":" + String(lamp.isOn() ? "true" : "false");
   j += ",\"brightness\":" + String(lamp.brightness());
 
   j += ",\"fsm\":\"" + String(toString(touch.state())) + "\"";
@@ -385,6 +394,8 @@ static void ensureNetServices() {
 void setup() {
   Serial.begin(115200);
   while (!Serial && millis() < 2000) delay(10);   // let the USB-CDC host attach
+
+  log_i("Living Room Lamp — build %s", BUILD_ID);
 
   loadConfig();
 
