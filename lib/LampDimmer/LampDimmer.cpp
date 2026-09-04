@@ -1,5 +1,15 @@
 #include "LampDimmer.h"
 
+namespace {
+// ISR-context counter — see LampDimmer::zcPulses(). File-scope rather than a
+// class member: rbdimmer_set_callback() takes a plain function pointer, and
+// the callback must be IRAM_ATTR (no member-function trampoline through that).
+volatile uint32_t g_zcPulses = 0;
+void IRAM_ATTR onZeroCross(void*) { g_zcPulses++; }
+}
+
+uint32_t LampDimmer::zcPulses() const { return g_zcPulses; }
+
 bool LampDimmer::begin(uint8_t zeroCrossPin, uint8_t dimPin) {
   if (rbdimmer_init() != RBDIMMER_OK) {
     log_e("rbdimmer_init failed");
@@ -10,6 +20,8 @@ bool LampDimmer::begin(uint8_t zeroCrossPin, uint8_t dimPin) {
     log_e("rbdimmer zero-cross register failed (pin %u)", zeroCrossPin);
     return false;
   }
+  if (rbdimmer_set_callback(0, onZeroCross, nullptr) != RBDIMMER_OK)
+    log_w("rbdimmer_set_callback failed — no raw Z-C pulse counter");
 
   rbdimmer_config_t config = {};
   config.gpio_pin      = dimPin;
@@ -24,15 +36,22 @@ bool LampDimmer::begin(uint8_t zeroCrossPin, uint8_t dimPin) {
 
   log_i("LampDimmer ready: ZC=%u DIM=%u", zeroCrossPin, dimPin);
 
-  // Give the zero-cross detector a couple of mains cycles to lock on, then log
-  // what it found — the channel-creation "half-cycle: 10000 us" line above is
-  // just the pre-mains default guess and never updates, so this is the actual
-  // proof Z-C pulses are reaching the XIAO. Mirrors rbdimmerESP32's own example.
-  delay(200);
+  // Give the zero-cross detector time to lock on, then log what it found — the
+  // channel-creation "half-cycle: 10000 us" line above is just the pre-mains
+  // default guess and never updates. rbdimmerESP32 needs 50 valid half-cycle
+  // measurements before it reports a frequency (~417 ms at 60 Hz, ~500 ms at
+  // 50 Hz) — 700 ms covers either with margin.
+  delay(700);
   uint16_t freq = rbdimmer_get_frequency(0);
-  if (freq > 0) log_i("Mains frequency detected: %u Hz", freq);
-  else          log_w("No mains frequency detected yet — no Z-C pulses seen "
-                       "(mains not connected, or check the Z-C wire to D2)");
+  if (freq > 0) {
+    log_i("Mains frequency detected: %u Hz (%u Z-C pulses so far)", freq, g_zcPulses);
+  } else {
+    log_w("No mains frequency locked yet (%u Z-C pulses so far)%s", g_zcPulses,
+          g_zcPulses == 0 ? " — nothing reaching D2: check the Z-C wire and the "
+                            "dimmer module's AC-N connection"
+                          : " — pulses arriving but too irregular to lock; "
+                            "check for a noisy/marginal connection");
+  }
 
   return true;
 }

@@ -204,7 +204,8 @@ input{width:5rem}.on{color:#0a0;font-weight:bold}.bad{color:#c00;font-weight:bol
 #otaBanner{display:none;background:#fee;border:1px solid #c00;border-radius:.4rem;padding:.6rem 1rem;margin:1rem 0}
 </style></head><body>
 <h1>Living Room Lamp</h1>
-<p>Lamp: <span id="lamp"></span> &nbsp; Gesture state: <b id="fsm"></b> &nbsp; Mains: <span id="hz"></span></p>
+<p>Lamp: <span id="lamp"></span> &nbsp; Gesture state: <b id="fsm"></b> &nbsp; Mains: <span id="hz"></span>
+&nbsp; Z-C pulses: <span id="zc"></span></p>
 <div id="otaBanner">🛠 <b>OTA mode</b> — touch and remote control are frozen. Flash now, or
 <button id="otaExit" type="button">cancel</button></div>
 <table><thead><tr><th>Pad</th><th>filtered</th><th>baseline</th><th>touched</th></tr></thead>
@@ -219,6 +220,7 @@ input{width:5rem}.on{color:#0a0;font-weight:bold}.bad{color:#c00;font-weight:bol
 <p><button id="otaEnter" type="button">Prepare for OTA update</button></p>
 <script>
 const $=s=>document.querySelector(s);
+let lastZc=null;
 function applyCfg(cfg){
  for(const k of ['touchThr','relThr','minLevel','rampStep']) $('[name='+k+']').value=cfg[k];
 }
@@ -232,6 +234,8 @@ async function tick(){
  $('#lamp').innerHTML=s.on?'<span class=on>ON '+s.brightness+'%</span>':'off';
  $('#fsm').textContent=s.fsm;
  $('#hz').innerHTML=s.mainsHz?s.mainsHz+' Hz':'<span class=bad>not detected</span>';
+ const dz=lastZc==null?0:s.zcPulses-lastZc; lastZc=s.zcPulses;
+ $('#zc').innerHTML=s.zcPulses+(dz>0?' <span class=on>(+'+dz+')</span>':' <span class=bad>(idle)</span>');
  $('#pads').innerHTML=s.pads.map(p=>`<tr><td>${p.name}</td><td>${p.filtered}</td><td>${p.baseline}</td><td>${p.touched?'YES':'-'}</td></tr>`).join('');
  $('#otaBanner').style.display=s.otaMode?'block':'none';
 }
@@ -272,6 +276,7 @@ static void sendStatusJson(PsychicResponse* response) {
 
   j += ",\"fsm\":\"" + String(toString(touch.state())) + "\"";
   j += ",\"mainsHz\":" + String(lamp.mainsHz());
+  j += ",\"zcPulses\":" + String(lamp.zcPulses());
   j += ",\"otaMode\":" + String(g_otaMode ? "true" : "false");
 
   j += ",\"pads\":[";

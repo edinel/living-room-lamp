@@ -31,9 +31,15 @@ public:
   bool    isOn() const      { return on_; }
   uint8_t brightness() const { return level_; }   // current target level, 0-100
 
-  // Detected mains frequency in Hz, or 0 if no zero-cross pulses have been
-  // seen yet (mains not connected, or a Z-C wiring fault). For the web page.
+  // Detected mains frequency in Hz, or 0 until 50 consecutive half-cycles
+  // land in range (~0.4-0.5 s of clean pulses). For the web page.
   uint16_t mainsHz() const { return rbdimmer_get_frequency(0); }
+
+  // Raw Z-C ISR pulse count since boot — increments on every edge rbdimmer
+  // sees on the Z-C pin, independent of whether it's clean enough to average
+  // into a locked frequency. A frozen count with mains connected means no
+  // pulses are reaching the pin at all (wiring), not just noisy ones.
+  uint32_t zcPulses() const;
 
 private:
   void apply(uint8_t level, uint16_t fadeMs);
