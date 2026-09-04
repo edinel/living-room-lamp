@@ -41,6 +41,16 @@ public:
   // pulses are reaching the pin at all (wiring), not just noisy ones.
   uint32_t zcPulses() const;
 
+  // Irreversibly tears down rbdimmer, including its zero-cross GPIO ISR — call
+  // right before an OTA flash. That ISR fires ~120x/sec (every mains
+  // half-cycle) regardless of lamp on/off state; if one lands inside the
+  // window flash writes disable the cache, and the ISR (or anything it calls)
+  // isn't fully IRAM-resident, the core panics with a Cache access error —
+  // the actual cause of this build's flaky OTA (confirmed via a serial crash
+  // dump, not a power/EMI issue as first suspected). There is no un-shutdown:
+  // the device must reboot to get dimmer function back.
+  void shutdownForOTA();
+
 private:
   void apply(uint8_t level, uint16_t fadeMs);
 

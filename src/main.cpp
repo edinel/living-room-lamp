@@ -356,9 +356,26 @@ static void registerWebRoutes() {
 
   server.on("/api/ota-mode", HTTP_POST, [](PsychicRequest* request, PsychicResponse* response) {
     String body = request->body();
+    bool wasOta = g_otaMode;
     g_otaMode = jsonBool(body, "enabled", g_otaMode);
-    if (g_otaMode) applyOn(false);   // known-off state before a flash/reboot
-    log_i("OTA mode %s", g_otaMode ? "ENTERED — touch/MQTT frozen" : "exited");
+
+    if (g_otaMode && !wasOta) {
+      applyOn(false);           // known-off state before a flash
+      lamp.shutdownForOTA();    // stop rbdimmer's zero-cross ISR — see LampDimmer.h
+      log_w("OTA mode ENTERED — touch/MQTT frozen, dimmer shut down");
+      return response->send(200, "application/json", "{\"ok\":true}");
+    }
+
+    if (!g_otaMode && wasOta) {
+      // rbdimmer was torn down entering OTA mode and can't be safely
+      // re-initialized in place — reboot for a clean restart instead.
+      log_w("OTA mode cancelled — rebooting to restore the dimmer");
+      esp_err_t res = response->send(200, "application/json", "{\"ok\":true,\"rebooting\":true}");
+      delay(200);
+      ESP.restart();
+      return res;
+    }
+
     return response->send(200, "application/json", "{\"ok\":true}");
   });
 }

@@ -86,6 +86,12 @@ void LampDimmer::setBrightness(uint8_t pct) {
   log_i("Lamp brightness %u", pct);
 }
 
+void LampDimmer::shutdownForOTA() {
+  rbdimmer_err_t err = rbdimmer_deinit();
+  channel_ = nullptr;   // now invalid; nothing after this may touch it
+  log_w("rbdimmer deinit for OTA: %s", err == RBDIMMER_OK ? "ok" : "failed");
+}
+
 void LampDimmer::nudge(int8_t dir) {
   int next = (int)level_ + dir * (int)rampStep_;
 
