@@ -89,6 +89,11 @@ WiFiClient        wifiClient;
 PubSubClient      mqtt(wifiClient);
 PsychicHttpServer server;
 
+// Set while "preparing for OTA" from the web page: touch and MQTT commands are
+// ignored so a flash isn't racing a live gesture or a stray HA command. Not
+// persisted — always false on boot.
+static bool g_otaMode = false;
+
 // ---------------------------------------------------------------------------
 // State setters — single entry point for both touch and MQTT
 // ---------------------------------------------------------------------------
@@ -114,6 +119,8 @@ static void applyBrightness(uint8_t pct) {
 // MQTT / Home Assistant
 // ---------------------------------------------------------------------------
 static void onMqttMessage(char* topic, byte* payload, unsigned int length) {
+  if (g_otaMode) return;   // frozen — see g_otaMode
+
   String msg((char*)payload, length);
 
   if (strcmp(topic, TOPIC_SET) == 0) {
@@ -193,9 +200,13 @@ static const char PAGE_HTML[] PROGMEM = R"HTML(<!doctype html><html><head>
 <style>body{font-family:system-ui;margin:1.5rem;max-width:34rem}
 table{border-collapse:collapse;width:100%;margin:1rem 0}td,th{border:1px solid #ccc;padding:.3rem .6rem;text-align:right}
 th:first-child,td:first-child{text-align:left}label{display:block;margin:.6rem 0}
-input{width:5rem}.on{color:#0a0;font-weight:bold}</style></head><body>
+input{width:5rem}.on{color:#0a0;font-weight:bold}.bad{color:#c00;font-weight:bold}
+#otaBanner{display:none;background:#fee;border:1px solid #c00;border-radius:.4rem;padding:.6rem 1rem;margin:1rem 0}
+</style></head><body>
 <h1>Living Room Lamp</h1>
-<p>Lamp: <span id="lamp"></span> &nbsp; Gesture state: <b id="fsm"></b></p>
+<p>Lamp: <span id="lamp"></span> &nbsp; Gesture state: <b id="fsm"></b> &nbsp; Mains: <span id="hz"></span></p>
+<div id="otaBanner">🛠 <b>OTA mode</b> — touch and remote control are frozen. Flash now, or
+<button id="otaExit" type="button">cancel</button></div>
 <table><thead><tr><th>Pad</th><th>filtered</th><th>baseline</th><th>touched</th></tr></thead>
 <tbody id="pads"></tbody></table>
 <form id="cfg">
@@ -205,6 +216,7 @@ input{width:5rem}.on{color:#0a0;font-weight:bold}</style></head><body>
 <label>Ramp step (%) <input name="rampStep" type="number" min="1" max="25"></label>
 <button>Save</button> <span id="saved"></span>
 </form>
+<p><button id="otaEnter" type="button">Prepare for OTA update</button></p>
 <script>
 const $=s=>document.querySelector(s);
 function applyCfg(cfg){
@@ -219,7 +231,9 @@ async function tick(){
  const s=await (await fetch('/api/status')).json();
  $('#lamp').innerHTML=s.on?'<span class=on>ON '+s.brightness+'%</span>':'off';
  $('#fsm').textContent=s.fsm;
+ $('#hz').innerHTML=s.mainsHz?s.mainsHz+' Hz':'<span class=bad>not detected</span>';
  $('#pads').innerHTML=s.pads.map(p=>`<tr><td>${p.name}</td><td>${p.filtered}</td><td>${p.baseline}</td><td>${p.touched?'YES':'-'}</td></tr>`).join('');
+ $('#otaBanner').style.display=s.otaMode?'block':'none';
 }
 $('#cfg').onsubmit=async e=>{e.preventDefault();
  const b={};
@@ -229,6 +243,12 @@ $('#cfg').onsubmit=async e=>{e.preventDefault();
  if(j.cfg) applyCfg(j.cfg);   // reflect whatever the server actually stored (incl. clamping)
  $('#saved').textContent='saved';setTimeout(()=>$('#saved').textContent='',1500);
 };
+async function setOtaMode(on){
+ await fetch('/api/ota-mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:on})});
+ tick();
+}
+$('#otaEnter').onclick=()=>setOtaMode(true);
+$('#otaExit').onclick=()=>setOtaMode(false);
 (async()=>{ applyCfg((await (await fetch('/api/status')).json()).cfg); })();
 tick();setInterval(tick,400);
 </script></body></html>)HTML";
@@ -251,6 +271,8 @@ static void sendStatusJson(PsychicResponse* response) {
   j += ",\"brightness\":" + String(lamp.brightness());
 
   j += ",\"fsm\":\"" + String(toString(touch.state())) + "\"";
+  j += ",\"mainsHz\":" + String(lamp.mainsHz());
+  j += ",\"otaMode\":" + String(g_otaMode ? "true" : "false");
 
   j += ",\"pads\":[";
   for (size_t i = 0; i < 3; i++) {
@@ -281,6 +303,16 @@ static uint8_t jsonU8(const String& body, const char* key, uint8_t fallback,
   return (uint8_t)constrain(v, (long)lo, (long)hi);
 }
 
+static bool jsonBool(const String& body, const char* key, bool fallback) {
+  int k = body.indexOf(String("\"") + key + "\"");
+  if (k < 0) return fallback;
+  int colon = body.indexOf(':', k);
+  if (colon < 0) return fallback;
+  int start = colon + 1;
+  while (start < (int)body.length() && body[start] == ' ') start++;
+  return body.startsWith("true", start);
+}
+
 static void registerWebRoutes() {
   server.on("/", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
     return response->send(200, "text/html", PAGE_HTML);
@@ -304,6 +336,14 @@ static void registerWebRoutes() {
 
     String resp = "{\"ok\":true,\"cfg\":" + cfgJson() + "}";
     return response->send(200, "application/json", resp.c_str());
+  });
+
+  server.on("/api/ota-mode", HTTP_POST, [](PsychicRequest* request, PsychicResponse* response) {
+    String body = request->body();
+    g_otaMode = jsonBool(body, "enabled", g_otaMode);
+    if (g_otaMode) applyOn(false);   // known-off state before a flash/reboot
+    log_i("OTA mode %s", g_otaMode ? "ENTERED — touch/MQTT frozen" : "exited");
+    return response->send(200, "application/json", "{\"ok\":true}");
   });
 }
 
@@ -379,7 +419,11 @@ void loop() {
   ensureNetServices();
   ArduinoOTA.handle();
   checkMQTT();
-  mqtt.loop();
+  mqtt.loop();   // onMqttMessage() self-guards on g_otaMode
+
+  // OTA mode: lamp is already off (see /api/ota-mode), touch is frozen so a
+  // stray gesture can't do anything while a flash is imminent/in progress.
+  if (g_otaMode) return;
 
   switch (touch.poll()) {
     case Gesture::Toggle:   applyOn(!lamp.isOn());          break;

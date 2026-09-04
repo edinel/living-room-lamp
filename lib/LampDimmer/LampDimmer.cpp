@@ -23,6 +23,17 @@ bool LampDimmer::begin(uint8_t zeroCrossPin, uint8_t dimPin) {
   }
 
   log_i("LampDimmer ready: ZC=%u DIM=%u", zeroCrossPin, dimPin);
+
+  // Give the zero-cross detector a couple of mains cycles to lock on, then log
+  // what it found — the channel-creation "half-cycle: 10000 us" line above is
+  // just the pre-mains default guess and never updates, so this is the actual
+  // proof Z-C pulses are reaching the XIAO. Mirrors rbdimmerESP32's own example.
+  delay(200);
+  uint16_t freq = rbdimmer_get_frequency(0);
+  if (freq > 0) log_i("Mains frequency detected: %u Hz", freq);
+  else          log_w("No mains frequency detected yet — no Z-C pulses seen "
+                       "(mains not connected, or check the Z-C wire to D2)");
+
   return true;
 }
 

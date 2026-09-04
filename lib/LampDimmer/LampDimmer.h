@@ -31,6 +31,10 @@ public:
   bool    isOn() const      { return on_; }
   uint8_t brightness() const { return level_; }   // current target level, 0-100
 
+  // Detected mains frequency in Hz, or 0 if no zero-cross pulses have been
+  // seen yet (mains not connected, or a Z-C wiring fault). For the web page.
+  uint16_t mainsHz() const { return rbdimmer_get_frequency(0); }
+
 private:
   void apply(uint8_t level, uint16_t fadeMs);
 
