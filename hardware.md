@@ -38,7 +38,7 @@ the enclosure floor — DIN-rail stub or bonded/zip-tied directly, no rail neede
 
 | HDR-15-5 terminal | Connects to |
 |-------------------|-------------|
-| `L` | hot, after the 3A breaker, before the dimmer's `AC-L IN` (un-switched) |
+| `L` | hot, after the 3A breaker, before the dimmer's `AC-L IN` — a new splice on the **line (un-switched) side**, not a tap off the dimmer's output |
 | `N` | neutral straight-through run (same WAGO 221 as the dimmer's `AC-N`) |
 | `⏚` | ground straight-through run |
 | `+V` | XIAO `5V` pad |
@@ -47,6 +47,18 @@ the enclosure floor — DIN-rail stub or bonded/zip-tied directly, no rail neede
 Ships factory-set at 5.0 V. Power it with the DC output unloaded, meter `+V`/`−V`
 for ~5.0 V, then connect the XIAO. Leave the trimmer alone. Idle draw <0.1 W; the
 XIAO peaks well under 0.5 A, so the 2.4 A rating is large margin.
+
+**Build pitfall (hit during bring-up, cost a debugging session — get this right):**
+`L` must splice off hot **between the breaker and the dimmer's `AC-L IN`**, i.e. a
+new junction in parallel with the wire that continues to the dimmer — not off the
+dimmer's *output* WAGO (the one feeding the pigtail). The dimmer's output is
+switched hot: it's only live while the TRIAC is conducting, and firmware boots
+with the lamp off, so a supply fed from there gets no power at boot and the
+system can never bootstrap (XIAO needs power before it can tell the dimmer to
+turn on). The failure signature was: HDR-15-5 never powers up standalone, and
+metering `L`↔`N` at its input reads a small non-mains "ghost" voltage (a few
+volts, not ~0 or ~120) — the tell that one leg is floating on the dimmer's
+switched side rather than genuinely connected to line.
 
 ## Inter-box cable (floor box → desk box)
 

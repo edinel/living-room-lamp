@@ -4,10 +4,13 @@
 
 * ~~Bench: firmware boots, WiFi/MQTT/HA/web all up, MPR121 reads (bit-bang I2C —
   hardware I2C is broken on the C6, see hardware.md), gestures work.~~ ✓
-* Bench-test the dimmer chain: XIAO-C6 → RobotDyn module → real bulb. Confirm
-  `rbdimmerESP32` drives the DIM pin and phase-cuts (scope or visible dimming)
-  **before** anything gets encapsulated. (No mains connected yet — this is the
-  one thing still unverified.)
+* ~~Self-powered from the HDR-15-5 on real mains: boots, Z-C locks at 60 Hz.~~ ✓
+  (Got here via a real wiring bug — HDR-15-5 `L` was tapped off the dimmer's
+  *switched* output instead of the line side; see hardware.md's "Build
+  pitfall.")
+* Bulb in the socket: confirm `rbdimmerESP32` actually phase-cuts and dims —
+  incandescent first if available (cleanest test), then the real dimmable LED.
+  Watch for flicker/buzz/warmth. This is the one thing still unverified.
 * Tune MPR121 thresholds on the *mounted* copper pads via the web page
   (`http://living-room-lamp.local.solace.org/`) — bench values on the bare
   board do not transfer.
@@ -19,13 +22,11 @@
 
 ## Floor box
 
-* Solder the RobotDyn dimmer module to the perfboard.
-* Solder the XIAO-C6 to the perfboard.
-* Wait for HDR-15-5 to arrive, then wire it in: power it with the DC output unloaded
-  meter `+V`/`-V` for ~5.0 V,
-  leave the trimmer alone, then wire `+V`→XIAO `5V`, `-V`→XIAO `GND`.
-* HDR-15-5 AC in: `L` from hot after the breaker but before the dimmer's
-  `AC-L IN` (un-switched); `N` from the neutral run; `⏚` to the ground run.
+* ~~Solder the RobotDyn dimmer module to the perfboard.~~ ✓
+* ~~Solder the XIAO-C6 to the perfboard.~~ ✓
+* ~~HDR-15-5 wired in, powering the XIAO from mains.~~ ✓ — `L` must splice off
+  the **line side** (breaker → dimmer `AC-L IN`), not the dimmer's switched
+  output; see hardware.md if rebuilding this.
 * Hot path: plug → breaker → dimmer `AC-L IN` → `AC-L LOAD` → pigtail black.
 * Neutral and ground straight through to the pigtail.
 * No heatsink on the dimmer (one LED bulb ≈ 0.2 W in the TRIAC).
@@ -35,7 +36,7 @@
   (cover every AC terminal joint), then a mounting coat onto scuffed acrylic.
   Barrier or coat the component side if it ends up facing the perfboard.
 * Mount XIAO/perfboard and the HDR-15-5 (adhesive / zip-tie — no DIN rail).
-* Wire the dimmer logic header now: `VCC`→3V3, `GND`→GND, `Z-C`→D2, `DIM`→D3.
+* ~~Wire the dimmer logic header: `VCC`→3V3, `GND`→GND, `Z-C`→D2, `DIM`→D3.~~ ✓
 * Solder short tails from the perfboard (3V3 / GND / D0=SDA / D1=SCL) into a
   labelled 4-circuit inline lever splice (SPL-4): channel 1 = 3V3/red,
   2 = GND/black, 3 = SDA/white, 4 = SCL/yellow. Write the map on the connector
