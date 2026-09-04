@@ -213,7 +213,7 @@ input{width:5rem}.on{color:#0a0;font-weight:bold}.bad{color:#c00;font-weight:bol
 <h1>Living Room Lamp</h1>
 <p style="opacity:.55;font-size:.8rem;margin-top:-.6rem">build <span id="build"></span></p>
 <p>Lamp: <span id="lamp"></span> &nbsp; Gesture state: <b id="fsm"></b> &nbsp; Mains: <span id="hz"></span>
-&nbsp; Z-C pulses: <span id="zc"></span></p>
+&nbsp; Z-C pulses: <span id="zc"></span> &nbsp; WiFi: <span id="rssi"></span></p>
 <div id="otaBanner">🛠 <b>OTA mode</b> — touch and remote control are frozen. Flash now, or
 <button id="otaExit" type="button">cancel</button></div>
 <table><thead><tr><th>Pad</th><th>filtered</th><th>baseline</th><th>touched</th></tr></thead>
@@ -244,6 +244,7 @@ async function tick(){
  $('#hz').innerHTML=s.mainsHz?s.mainsHz+' Hz':'<span class=bad>not detected</span>';
  const dz=lastZc==null?0:s.zcPulses-lastZc; lastZc=s.zcPulses;
  $('#zc').innerHTML=s.zcPulses+(dz>0?' <span class=on>(+'+dz+')</span>':' <span class=bad>(idle)</span>');
+ $('#rssi').textContent=s.rssi+' dBm';
  $('#pads').innerHTML=s.pads.map(p=>`<tr><td>${p.name}</td><td>${p.filtered}</td><td>${p.baseline}</td><td>${p.touched?'YES':'-'}</td></tr>`).join('');
  $('#otaBanner').style.display=s.otaMode?'block':'none';
 }
@@ -286,6 +287,7 @@ static void sendStatusJson(PsychicResponse* response) {
   j += ",\"fsm\":\"" + String(toString(touch.state())) + "\"";
   j += ",\"mainsHz\":" + String(lamp.mainsHz());
   j += ",\"zcPulses\":" + String(lamp.zcPulses());
+  j += ",\"rssi\":" + String(WiFi.RSSI());
   j += ",\"otaMode\":" + String(g_otaMode ? "true" : "false");
 
   j += ",\"pads\":[";
