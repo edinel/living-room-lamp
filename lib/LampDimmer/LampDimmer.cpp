@@ -58,5 +58,13 @@ void LampDimmer::setBrightness(uint8_t pct) {
 
 void LampDimmer::nudge(int8_t dir) {
   int next = (int)level_ + dir * (int)rampStep_;
+
+  // Dimming down through the floor turns the lamp off (with the normal fade)
+  // instead of sticking at minLevel_ forever — the floor is a click-off point,
+  // like the bottom of a rotary dimmer's travel, not a wall.
+  if (dir < 0 && next < (int)minLevel_) {
+    setOn(false);
+    return;
+  }
   setBrightness((uint8_t)constrain(next, (int)minLevel_, 100));
 }

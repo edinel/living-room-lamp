@@ -158,8 +158,14 @@ the bare onboard pads.
   fade to 0 (short transition, e.g. ~300ms) rather than an instant cut.
 - **Hold A+B** → brightness ramps up smoothly while both are held, stops at
   100.
-- **Hold B+C** → brightness ramps down smoothly while both are held, stops
-  at some reasonable minimum (not fully 0 — that's what the toggle is for).
+- **Hold B+C** → brightness ramps down smoothly while both are held. Reaching
+  a reasonable minimum and continuing to hold turns the lamp off (via the same
+  fade-to-0 path as the A+B+C toggle) — like the click-off at the bottom of a
+  rotary dimmer's travel. (Revised from an earlier "ramp never goes below the
+  floor, only the toggle turns it off" — rejected because it left the lamp
+  logically "on" at a floor brightness with no way to get to off except a
+  different, three-finger gesture; the click-off matches how a physical
+  dimmer actually behaves and needs no path-of-its-own for turning off.)
 - Because B participates in both ramp gestures, use the *current* combined
   touch state each poll to decide which gesture (if any) is active — e.g.
   check "all three" first, then "A+B only", then "B+C only", so a

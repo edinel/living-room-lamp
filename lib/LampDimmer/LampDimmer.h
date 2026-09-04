@@ -12,7 +12,7 @@ class LampDimmer {
 public:
   // Defaults for the values the spec leaves open ("tune during build").
   // minLevel and rampStep are overridable at runtime from the web tuning page.
-  static constexpr uint8_t  kDefaultMinLevel     = 10;   // dim-down ramp floor (%)
+  static constexpr uint8_t  kDefaultMinLevel     = 10;   // dim-down click-off point (%)
   static constexpr uint8_t  kDefaultRampStep     = 2;    // % per ramp tick
   static constexpr uint16_t kFadeOffMs           = 300;  // toggle-off fade
   static constexpr uint16_t kFadeOnMs            = 150;  // toggle-on restore
@@ -23,7 +23,10 @@ public:
 
   void setOn(bool on);          // on -> fade to last level; off -> fade to 0
   void setBrightness(uint8_t pct);   // absolute, clamped to [minLevel, 100]
-  void nudge(int8_t dir);            // +1 / -1 -> one rampStep, clamped
+
+  // +1 / -1, one rampStep. Ramping down through minLevel turns the lamp off
+  // (with the normal fade) rather than sticking at the floor.
+  void nudge(int8_t dir);
 
   bool    isOn() const      { return on_; }
   uint8_t brightness() const { return level_; }   // current target level, 0-100
