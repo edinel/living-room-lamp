@@ -207,22 +207,38 @@ input{width:5rem}.on{color:#0a0;font-weight:bold}</style></head><body>
 </form>
 <script>
 const $=s=>document.querySelector(s);
+function applyCfg(cfg){
+ for(const k of ['touchThr','relThr','minLevel','rampStep']) $('[name='+k+']').value=cfg[k];
+}
+// Status (lamp/pads/fsm) polls every 400ms. Config fields are NOT re-synced
+// here — doing so fights the number-input spin buttons (a spinner click
+// doesn't reliably count as "focused" before the next poll lands, so the
+// field snaps back to the old value before Save can fire). They're loaded
+// once at page load and once after a Save response instead.
 async function tick(){
  const s=await (await fetch('/api/status')).json();
  $('#lamp').innerHTML=s.on?'<span class=on>ON '+s.brightness+'%</span>':'off';
  $('#fsm').textContent=s.fsm;
  $('#pads').innerHTML=s.pads.map(p=>`<tr><td>${p.name}</td><td>${p.filtered}</td><td>${p.baseline}</td><td>${p.touched?'YES':'-'}</td></tr>`).join('');
- for(const k of ['touchThr','relThr','minLevel','rampStep'])
-   if(document.activeElement!==$('[name='+k+']')) $('[name='+k+']').value=s.cfg[k];
 }
 $('#cfg').onsubmit=async e=>{e.preventDefault();
  const b={};
  for(const [k,v] of new FormData(e.target)) b[k]=Number(v);   // FormData values are strings — send real JSON numbers
- await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+ const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+ const j=await r.json();
+ if(j.cfg) applyCfg(j.cfg);   // reflect whatever the server actually stored (incl. clamping)
  $('#saved').textContent='saved';setTimeout(()=>$('#saved').textContent='',1500);
 };
+(async()=>{ applyCfg((await (await fetch('/api/status')).json()).cfg); })();
 tick();setInterval(tick,400);
 </script></body></html>)HTML";
+
+static String cfgJson() {
+  return "{\"touchThr\":" + String(g_cfg.touchThr) +
+         ",\"relThr\":"   + String(g_cfg.relThr) +
+         ",\"minLevel\":" + String(g_cfg.minLevel) +
+         ",\"rampStep\":" + String(g_cfg.rampStep) + "}";
+}
 
 static void sendStatusJson(PsychicResponse* response) {
   const uint16_t touched = touch.touchedMask();
@@ -247,10 +263,7 @@ static void sendStatusJson(PsychicResponse* response) {
   }
   j += "]";
 
-  j += ",\"cfg\":{\"touchThr\":" + String(g_cfg.touchThr) +
-       ",\"relThr\":" + String(g_cfg.relThr) +
-       ",\"minLevel\":" + String(g_cfg.minLevel) +
-       ",\"rampStep\":" + String(g_cfg.rampStep) + "}";
+  j += ",\"cfg\":" + cfgJson();
   j += "}";
 
   response->send(200, "application/json", j.c_str());
@@ -289,7 +302,8 @@ static void registerWebRoutes() {
     lamp.setConfig(g_cfg.minLevel, g_cfg.rampStep);
     saveConfig();
 
-    return response->send(200, "application/json", "{\"ok\":true}");
+    String resp = "{\"ok\":true,\"cfg\":" + cfgJson() + "}";
+    return response->send(200, "application/json", resp.c_str());
   });
 }
 
