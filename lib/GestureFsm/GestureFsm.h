@@ -22,6 +22,9 @@ enum class Combo : uint8_t { None, AB, BC, All3, Other };
 
 Combo classifyTouch(uint16_t touchedBits);
 
+// Human-readable name for logging / the web tuning page's JSON.
+const char* toString(TouchState state);
+
 // Poll-driven gesture state machine. Feed it the raw MPR121 touched bitmask once
 // per poll; it returns the gesture (if any) recognised on that poll.
 //

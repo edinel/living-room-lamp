@@ -202,5 +202,18 @@ Gesture TouchPanel::poll() {
   if (now - lastPoll_ < kPollIntervalMs) return Gesture::None;
   lastPoll_ = now;
 
-  return fsm_.update(touchedMask());
+  const TouchState before = fsm_.state();
+  const uint16_t   mask   = touchedMask();
+  const Gesture    g      = fsm_.update(mask);
+  const TouchState after  = fsm_.state();
+
+  // Log every FSM transition, not just ones that end up changing the lamp —
+  // e.g. a single-pad touch that never reaches "stable" produces no gesture
+  // and is silent by design, but Idle->RampingUp etc. should be visible even
+  // without the web page open.
+  if (after != before) {
+    log_i("Touch %03X: %s -> %s%s", mask, toString(before), toString(after),
+          g == Gesture::Toggle ? " [Toggle]" : "");
+  }
+  return g;
 }

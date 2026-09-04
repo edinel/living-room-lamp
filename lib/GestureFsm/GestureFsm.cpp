@@ -18,6 +18,16 @@ Combo classifyTouch(uint16_t bits) {
   return Combo::Other;   // e.g. B alone, or A+C — no action
 }
 
+const char* toString(TouchState state) {
+  switch (state) {
+    case TouchState::Idle:        return "Idle";
+    case TouchState::RampingUp:   return "RampingUp";
+    case TouchState::RampingDown: return "RampingDown";
+    case TouchState::Draining:    return "Draining";
+  }
+  return "?";
+}
+
 Gesture GestureFsm::update(uint16_t touchedBits) {
   const Combo combo = classifyTouch(touchedBits);
 

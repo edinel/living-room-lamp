@@ -97,6 +97,13 @@ void test_new_gesture_recognised_after_drain() {
   TEST_ASSERT_EQUAL(int(Gesture::RampUp), int(fsm.update(A | B)));
 }
 
+void test_touch_state_names_are_distinct_and_non_null() {
+  TEST_ASSERT_EQUAL_STRING("Idle",        toString(TouchState::Idle));
+  TEST_ASSERT_EQUAL_STRING("RampingUp",   toString(TouchState::RampingUp));
+  TEST_ASSERT_EQUAL_STRING("RampingDown", toString(TouchState::RampingDown));
+  TEST_ASSERT_EQUAL_STRING("Draining",    toString(TouchState::Draining));
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_classify_combinations);
@@ -108,5 +115,6 @@ int main(int, char**) {
   RUN_TEST(test_release_from_all_three_via_bc_emits_no_ramp);
   RUN_TEST(test_ramp_wobble_does_not_flip_direction);
   RUN_TEST(test_new_gesture_recognised_after_drain);
+  RUN_TEST(test_touch_state_names_are_distinct_and_non_null);
   return UNITY_END();
 }

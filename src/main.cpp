@@ -233,14 +233,7 @@ static void sendStatusJson(PsychicResponse* response) {
   j += "\"on\":" + String(lamp.isOn() ? "true" : "false");
   j += ",\"brightness\":" + String(lamp.brightness());
 
-  const char* fsm = "idle";
-  switch (touch.state()) {
-    case TouchState::Idle:        fsm = "idle";       break;
-    case TouchState::RampingUp:   fsm = "ramping-up"; break;
-    case TouchState::RampingDown: fsm = "ramping-down"; break;
-    case TouchState::Draining:    fsm = "draining";   break;
-  }
-  j += ",\"fsm\":\"" + String(fsm) + "\"";
+  j += ",\"fsm\":\"" + String(toString(touch.state())) + "\"";
 
   j += ",\"pads\":[";
   for (size_t i = 0; i < 3; i++) {
