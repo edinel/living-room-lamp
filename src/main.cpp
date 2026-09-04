@@ -411,6 +411,11 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFi.setHostname(HOSTNAME);
+  // Modem sleep saves power between beacons at the cost of occasional latency
+  // spikes — fine for MQTT/HTTP, fatal to a sustained OTA transfer (manifests
+  // as a mid-flash "Connection reset by peer"). This device is always
+  // mains-powered, so there's no reason to trade reliability for it.
+  WiFi.setSleep(false);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
