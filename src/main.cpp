@@ -216,7 +216,8 @@ async function tick(){
    if(document.activeElement!==$('[name='+k+']')) $('[name='+k+']').value=s.cfg[k];
 }
 $('#cfg').onsubmit=async e=>{e.preventDefault();
- const b=Object.fromEntries(new FormData(e.target));
+ const b={};
+ for(const [k,v] of new FormData(e.target)) b[k]=Number(v);   // FormData values are strings — send real JSON numbers
  await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
  $('#saved').textContent='saved';setTimeout(()=>$('#saved').textContent='',1500);
 };
@@ -261,7 +262,9 @@ static uint8_t jsonU8(const String& body, const char* key, uint8_t fallback,
   if (k < 0) return fallback;
   int colon = body.indexOf(':', k);
   if (colon < 0) return fallback;
-  long v = body.substring(colon + 1).toInt();
+  int start = colon + 1;
+  while (start < (int)body.length() && (body[start] == ' ' || body[start] == '"')) start++;
+  long v = body.substring(start).toInt();   // String::toInt() stops at the first non-digit
   return (uint8_t)constrain(v, (long)lo, (long)hi);
 }
 
