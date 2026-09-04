@@ -202,6 +202,7 @@ static void checkMQTT() {
 // Web server — live MPR121 readout + tuning form
 // ---------------------------------------------------------------------------
 static const char PAGE_HTML[] PROGMEM = R"HTML(<!doctype html><html><head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Living Room Lamp</title>
 <style>body{font-family:system-ui;margin:1.5rem;max-width:34rem}
