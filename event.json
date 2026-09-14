@@ -1,16 +1,16 @@
 {
- "ts": "2026-09-14T21:08:22.085",
+ "ts": "2026-09-14T21:08:22.179",
  "type": "set",
- "key": "desk-box-glue",
+ "key": "gfci-check",
  "fields": {
   "status": "open"
  },
- "text": "glue 1/8in ply desk box case shut, after the touch test on the tuning page",
+ "text": "before first power-on: confirm upstream inline GFCI adapter is actually in the chain (not just re-verified during bring-up); visual check for exposed mains metal, module coverage, strain relief",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 78172,
+  "pid": 78186,
   "branch": "main",
   "head": "cbc1a2f",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
