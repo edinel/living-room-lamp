@@ -1,16 +1,16 @@
 {
- "ts": "2026-09-14T21:08:22.276",
+ "ts": "2026-09-14T21:08:22.368",
  "type": "set",
- "key": "merge-main",
+ "key": "drop-usb-cdc",
  "fields": {
-  "status": "blocked"
+  "status": "open"
  },
- "text": "merge firmware-initial -\u003e main once the dimmer (bulb-test) is verified; blocked on bulb-test",
+ "text": "optional: drop -DARDUINO_USB_CDC_ON_BOOT=1 and the wait-for-Serial once bring-up is done; harmless to keep, low priority",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 78200,
+  "pid": 78214,
   "branch": "main",
   "head": "cbc1a2f",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
