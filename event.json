@@ -1,16 +1,16 @@
 {
- "ts": "2026-09-14T21:08:22.179",
+ "ts": "2026-09-14T21:08:22.276",
  "type": "set",
- "key": "gfci-check",
+ "key": "merge-main",
  "fields": {
-  "status": "open"
+  "status": "blocked"
  },
- "text": "before first power-on: confirm upstream inline GFCI adapter is actually in the chain (not just re-verified during bring-up); visual check for exposed mains metal, module coverage, strain relief",
+ "text": "merge firmware-initial -\u003e main once the dimmer (bulb-test) is verified; blocked on bulb-test",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 78186,
+  "pid": 78200,
   "branch": "main",
   "head": "cbc1a2f",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
