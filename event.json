@@ -1,16 +1,16 @@
 {
- "ts": "2026-09-14T21:08:21.836",
+ "ts": "2026-09-14T21:08:21.986",
  "type": "set",
- "key": "mpr121-tuning",
+ "key": "brightness-floor",
  "fields": {
   "status": "open"
  },
- "text": "tune MPR121 setThresholds() on the mounted copper pads via http://living-room-lamp.local.solace.org/ — bench values on bare board don't transfer",
+ "text": "feel-test and set minimum-brightness floor + ramp step from the tuning page; persists to NVS",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 78144,
+  "pid": 78158,
   "branch": "main",
   "head": "cbc1a2f",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
