@@ -1,18 +1,21 @@
 {
- "ts": "2026-09-14T21:08:22.368",
+ "ts": "2026-09-14T21:09:31.815",
  "type": "set",
- "key": "drop-usb-cdc",
+ "key": "desk-box-glue",
  "fields": {
-  "status": "open"
+  "status": "done"
  },
- "text": "optional: drop -DARDUINO_USB_CDC_ON_BOOT=1 and the wait-for-Serial once bring-up is done; harmless to keep, low priority",
+ "text": "user confirmed desk box (1/8in ply case) glued shut, after doing the touch test on the tuning page",
+ "evidence": [
+  "report:edinel-2026-09-14"
+ ],
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 78214,
+  "pid": 78745,
   "branch": "main",
-  "head": "cbc1a2f",
+  "head": "fef24ab",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
   "session_source": "CLAUDE_CODE_SESSION_ID"
  }
