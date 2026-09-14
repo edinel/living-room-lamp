@@ -1,16 +1,16 @@
 {
- "ts": "2026-09-14T21:08:21.672",
+ "ts": "2026-09-14T21:08:21.836",
  "type": "set",
- "key": "bulb-test",
+ "key": "mpr121-tuning",
  "fields": {
   "status": "open"
  },
- "text": "confirm rbdimmerESP32 actually phase-cuts/dims with bulb in socket — incandescent first, then real dimmable LED; watch for flicker/buzz/warmth (TODO.md: still unverified)",
+ "text": "tune MPR121 setThresholds() on the mounted copper pads via http://living-room-lamp.local.solace.org/ — bench values on bare board don't transfer",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 78130,
+  "pid": 78144,
   "branch": "main",
   "head": "cbc1a2f",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
