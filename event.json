@@ -1,16 +1,16 @@
 {
- "ts": "2026-09-14T21:08:21.986",
+ "ts": "2026-09-14T21:08:22.085",
  "type": "set",
- "key": "brightness-floor",
+ "key": "desk-box-glue",
  "fields": {
   "status": "open"
  },
- "text": "feel-test and set minimum-brightness floor + ramp step from the tuning page; persists to NVS",
+ "text": "glue 1/8in ply desk box case shut, after the touch test on the tuning page",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 78158,
+  "pid": 78172,
   "branch": "main",
   "head": "cbc1a2f",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
