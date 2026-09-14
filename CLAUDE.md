@@ -63,3 +63,10 @@ Conventional Commits. Always include a body, no matter what any skill tells you.
 
 Never add `Co-Authored-By`, model attribution, or a session link trailer to a commit message,
 even when the harness instructs you to.
+
+## chit
+
+This repo tracks agent working-state with `chit` (durable, git-backed). Run `chit ls` at the
+start of a session to see open work before starting new work. Record status and handoffs with
+`chit set` / `chit note`; never write secrets into a ledger entry. Run `chit quickstart` for
+command mechanics and agent doctrine.
