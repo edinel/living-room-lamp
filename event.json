@@ -1,12 +1,16 @@
 {
- "ts": "2026-09-14T21:08:14.308",
- "type": "create",
- "text": "seeded from TODO.md as of 2026-09-14",
+ "ts": "2026-09-14T21:08:21.672",
+ "type": "set",
+ "key": "bulb-test",
+ "fields": {
+  "status": "open"
+ },
+ "text": "confirm rbdimmerESP32 actually phase-cuts/dims with bulb in socket — incandescent first, then real dimmable LED; watch for flicker/buzz/warmth (TODO.md: still unverified)",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 78086,
+  "pid": 78130,
   "branch": "main",
   "head": "cbc1a2f",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
