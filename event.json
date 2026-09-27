@@ -1,19 +1,16 @@
 {
- "ts": "2026-09-14T21:09:31.815",
+ "ts": "2026-09-27T22:07:20.700",
  "type": "set",
- "key": "desk-box-glue",
+ "key": "bleeder-resistor",
  "fields": {
-  "status": "done"
+  "status": "open"
  },
- "text": "user confirmed desk box (1/8in ply case) glued shut, after doing the touch test on the tuning page",
- "evidence": [
-  "report:edinel-2026-09-14"
- ],
+ "text": "install PCS LDS-120V LED Dimming Stabilizer in parallel across the pigtail black(load)/white(neutral) leads to fix TRIAC holding-current dropout — bulb flickers ~20%, cuts out entirely above ~54%. Rejected the Aeotec ZW150 (wrong device: Z-Wave smart-switch parasitic-power bypass, not a resistive bleeder). See hardware.md 'LED dimmer compatibility bleeder'. Breaker off before wiring.",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 78745,
+  "pid": 3573,
   "branch": "main",
   "head": "fef24ab",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
