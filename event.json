@@ -1,16 +1,14 @@
 {
- "ts": "2026-09-27T22:07:20.700",
- "type": "set",
- "key": "bleeder-resistor",
- "fields": {
-  "status": "open"
- },
- "text": "install PCS LDS-120V LED Dimming Stabilizer in parallel across the pigtail black(load)/white(neutral) leads to fix TRIAC holding-current dropout — bulb flickers ~20%, cuts out entirely above ~54%. Rejected the Aeotec ZW150 (wrong device: Z-Wave smart-switch parasitic-power bypass, not a resistive bleeder). See hardware.md 'LED dimmer compatibility bleeder'. Breaker off before wiring.",
+ "ts": "2026-09-27T22:07:28.971",
+ "type": "note",
+ "key": "bulb-test",
+ "kind": "gotcha",
+ "text": "Ordered Philips Ultra Definition 3.5W BA11 LED Filament, E12 candelabra, explicitly TRIAC-dimmable, 300lm 2700K (3-pack) to retest with — see hardware.md 'LED dimmer compatibility bleeder' for the flicker/cutoff findings from the previous bulb. Bleeder resistor (bleeder-resistor key) should be installed alongside before retesting, since low-wattage filament LEDs are exactly the load type most prone to TRIAC holding-current dropout even when TRIAC-rated.",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 3573,
+  "pid": 3645,
   "branch": "main",
   "head": "fef24ab",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
