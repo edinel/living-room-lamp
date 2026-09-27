@@ -151,6 +151,30 @@ Copied verbatim from the build spec — **hot is the only conductor ever switche
 - **Ground** runs straight through, wall plug → outlet pigtail green lead.
 - Recommended: upstream inline GFCI adapter between wall outlet and this device.
 
+## LED dimmer compatibility bleeder
+
+A dimmable LED bulb tested in this build flickered around 20% brightness and
+cut out entirely above ~54% — the RobotDyn dimmer module's own documentation
+confirms this is an expected failure mode with LED loads, not a firmware or
+wiring bug: at low conduction angles an LED driver's current draw can fall
+below the TRIAC's minimum holding current, dropping it out mid-cycle.
+
+Fix: a **PCS LDS-120V LED Dimming Stabilizer** (120VAC, 1.8W, ETL listed)
+wired in parallel across the pigtail's black (switched load) and white
+(neutral) leads, at the point where they exit the dimmer toward the outlet
+pigtail. It supplies a small continuous bleed current so the TRIAC stays
+above its holding-current threshold through the load's full dimming range.
+Wiring must be parallel, not series (series wiring holds the LED off
+permanently, without damaging anything) — see the [installation
+guide](https://manuals.homecontrols.com/manuals/PCLDS120V-Manual.pdf).
+
+Rejected: the Aeotec ZW150 "Bypass" (~$15, widely sold under similar
+"fix TRIAC flicker" marketing) — despite the label, it's a capacitive
+parasitic-power accessory for Aeotec's own Z-Wave Nano Dimmer smart switch
+(keeping its radio/MCU powered in a 2-wire no-neutral install), rated
+≤4W and not a resistive bleeder. Wrong device for a plain (non-smart)
+phase-cut dimmer's TRIAC holding-current problem.
+
 ## Tuning
 
 MPR121 thresholds, minimum-brightness floor, and ramp step are tuned live (and
