@@ -1,16 +1,16 @@
 {
- "ts": "2026-09-30T20:44:32.027",
+ "ts": "2026-09-30T20:44:32.160",
  "type": "set",
- "key": "fire-jitter",
+ "key": "trim-window",
  "fields": {
   "status": "open"
  },
- "text": "move TRIAC firing off rbdimmer's esp_timer task (up to ~0.7ms late fires measured) onto a hardware-timer ISR; design choice pending",
+ "text": "map user 1-100 onto linear dimmer window ~20..70 (measured on Philips BA11); persist lo/hi in NVS, expose on tuning page",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 39294,
+  "pid": 39308,
   "branch": "main",
   "head": "5bf3688",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
