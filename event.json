@@ -1,19 +1,16 @@
 {
- "ts": "2026-09-30T23:08:10.441",
+ "ts": "2026-09-30T23:08:10.568",
  "type": "set",
- "key": "fire-jitter",
+ "key": "trim-window",
  "fields": {
-  "status": "done"
+  "status": "open"
  },
- "text": "own interrupt-driven firing (ZC ISR + gptimer, level 3, core 1 on S3); bench xiao_s3_bench worst fire spread 57us/1min, 60us/10min under web load vs ~850us on C6+rbdimmer; /api/intr shows GPIO+TG0_T0 on CPU1",
- "evidence": [
-  "commit:97e808d"
- ],
+ "text": "implemented in 97e808d (default 20..70, tunable/persisted on page); still needs tuning on the real bulb after the S3 swap",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 41832,
+  "pid": 41846,
   "branch": "main",
   "head": "d92afb7",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
