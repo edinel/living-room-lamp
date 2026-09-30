@@ -18,6 +18,7 @@
 #include <PsychicHttp.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
+#include <esp_intr_alloc.h>
 
 #include "LampDimmer.h"
 #include "TouchPanel.h"
@@ -31,17 +32,27 @@
 #endif
 
 // ---------------------------------------------------------------------------
-// Pin map — XIAO ESP32-C6 silkscreen
+// Pin map — XIAO silkscreen (C6 or S3; the D-names resolve per board)
 // ---------------------------------------------------------------------------
 #define PIN_SDA        D0   // I2C to desk box
 #define PIN_SCL        D1
 #define PIN_DIMMER_ZC  D2   // dimmer module Z-C (input)
 #define PIN_DIMMER_DIM D3   // dimmer module DIM (output)
 
+// Bench build (env xiao_s3_bench): no mains, no dimmer. D4 outputs a fake
+// 120 Hz zero-cross pulse train — jumper D4 to D2 — so fire timing can be
+// measured on a bare board. Own hostname and no MQTT, so it can't collide
+// with the real lamp or show up in Home Assistant.
+#ifdef BENCH_FAKE_ZC
+#define PIN_BENCH_ZC_OUT D4
+#define HOSTNAME         "lamp-bench"
+#else
+#define HOSTNAME         "living-room-lamp"
+#endif
+
 // ---------------------------------------------------------------------------
 // Identity / MQTT topics
 // ---------------------------------------------------------------------------
-#define HOSTNAME              "living-room-lamp"
 #define MQTT_CLIENT_ID        "living_room_lamp"
 
 #define TOPIC_DISCOVERY       "homeassistant/light/living_room_lamp/config"
@@ -62,6 +73,8 @@ struct TuningConfig {
   uint8_t relThr   = TouchPanel::kDefaultReleaseThreshold;
   uint8_t minLevel = LampDimmer::kDefaultMinLevel;
   uint8_t rampStep = LampDimmer::kDefaultRampStep;
+  uint8_t trimLo   = LampDimmer::kDefaultTrimLo;
+  uint8_t trimHi   = LampDimmer::kDefaultTrimHi;
 };
 
 static TuningConfig g_cfg;
@@ -74,23 +87,32 @@ static void loadConfig() {
   g_cfg.relThr   = p.getUChar("relThr",   g_cfg.relThr);
   g_cfg.minLevel = p.getUChar("minLevel", g_cfg.minLevel);
   g_cfg.rampStep = p.getUChar("rampStep", g_cfg.rampStep);
+  g_cfg.trimLo   = p.getUChar("trimLo",   g_cfg.trimLo);
+  g_cfg.trimHi   = p.getUChar("trimHi",   g_cfg.trimHi);
   p.end();
 }
 
+LampDimmer lamp;
+
 static void saveConfig() {
+  // Flash writes postpone the dimmer interrupts; pause so a postponed
+  // zero-cross can't leave the gate held on (a full-brightness blip).
+  lamp.pause();
   Preferences p;
   p.begin("lamp", /*readOnly=*/false);
   p.putUChar("touchThr", g_cfg.touchThr);
   p.putUChar("relThr",   g_cfg.relThr);
   p.putUChar("minLevel", g_cfg.minLevel);
   p.putUChar("rampStep", g_cfg.rampStep);
+  p.putUChar("trimLo",   g_cfg.trimLo);
+  p.putUChar("trimHi",   g_cfg.trimHi);
   p.end();
+  lamp.resume();
 }
 
 // ---------------------------------------------------------------------------
 // Globals
 // ---------------------------------------------------------------------------
-LampDimmer        lamp;
 TouchPanel        touch;
 WiFiClient        wifiClient;
 PubSubClient      mqtt(wifiClient);
@@ -214,7 +236,11 @@ input{width:5rem}.on{color:#0a0;font-weight:bold}.bad{color:#c00;font-weight:bol
 <h1>Living Room Lamp</h1>
 <p style="opacity:.55;font-size:.8rem;margin-top:-.6rem">build <span id="build"></span> ✓</p>
 <p>Lamp: <span id="lamp"></span> &nbsp; Gesture state: <b id="fsm"></b> &nbsp; Mains: <span id="hz"></span>
-&nbsp; Z-C pulses: <span id="zc"></span> &nbsp; WiFi: <span id="rssi"></span></p>
+&nbsp; Z-C pulses: <span id="zc"></span> &nbsp; WiFi: <span id="rssi"></span>
+&nbsp; Fire delay: <span id="delay"></span></p>
+<p>Measured fires: <span id="fire"></span><br>Mains half-cycle: <span id="zcp"></span><br>
+Worst fire spread since page load: <b id="worst">0</b> µs &nbsp; worst half-cycle spread: <b id="worstZc">0</b> µs
+<button id="worstReset" type="button">reset</button></p>
 <div id="otaBanner">🛠 <b>OTA mode</b> — touch and remote control are frozen. Flash now, or
 <button id="otaExit" type="button">cancel</button></div>
 <table><thead><tr><th>Pad</th><th>filtered</th><th>baseline</th><th>touched</th></tr></thead>
@@ -224,14 +250,20 @@ input{width:5rem}.on{color:#0a0;font-weight:bold}.bad{color:#c00;font-weight:bol
 <label>Release threshold <input name="relThr" type="number" min="1" max="255"></label>
 <label>Min brightness (%) <input name="minLevel" type="number" min="1" max="90"></label>
 <label>Ramp step (%) <input name="rampStep" type="number" min="1" max="25"></label>
+<label>Trim low: conduction % at brightness 1 <input name="trimLo" type="number" min="1" max="95"></label>
+<label>Trim high: conduction % at brightness 100 <input name="trimHi" type="number" min="2" max="100"></label>
 <button>Save</button> <span id="saved"></span>
 </form>
-<p><button id="otaEnter" type="button">Prepare for OTA update</button></p>
+<form id="raw">
+<label>Raw dimmer level, test (% conduction, linear) <input name="level" type="number" min="0" max="100"></label>
+<button>Set raw</button> <span id="rawState"></span>
+</form>
+<p><button id="otaEnter" type="button">Prepare for OTA update</button> &nbsp; <a href="/api/intr">interrupt map</a></p>
 <script>
 const $=s=>document.querySelector(s);
-let lastZc=null;
+let lastZc=null, worst=0, worstZc=0;
 function applyCfg(cfg){
- for(const k of ['touchThr','relThr','minLevel','rampStep']) $('[name='+k+']').value=cfg[k];
+ for(const k of ['touchThr','relThr','minLevel','rampStep','trimLo','trimHi']) $('[name='+k+']').value=cfg[k];
 }
 // Status (lamp/pads/fsm) polls every 400ms. Config fields are NOT re-synced
 // here — doing so fights the number-input spin buttons (a spinner click
@@ -246,6 +278,17 @@ async function tick(){
  const dz=lastZc==null?0:s.zcPulses-lastZc; lastZc=s.zcPulses;
  $('#zc').innerHTML=s.zcPulses+(dz>0?' <span class=on>(+'+dz+')</span>':' <span class=bad>(idle)</span>');
  $('#rssi').textContent=s.rssi+' dBm';
+ const half=s.mainsHz?500000/s.mainsHz:0;
+ $('#delay').textContent=s.delayUs+' µs'+(half?' ('+Math.round(s.delayUs*180/half)+'°)':'');
+ $('#rawState').textContent=s.raw>=0?'raw mode: '+s.raw+'% (any gesture exits)':'';
+ const f=s.fire, spread=f.n?f.max-f.min:0;
+ if(spread>worst) worst=spread;
+ $('#fire').textContent=f.n?f.n+' fires, avg '+f.avg+' µs (set '+s.delayUs+'), min '+f.min+', max '+f.max+', spread '+spread+' µs':'none';
+ $('#worst').textContent=worst;
+ const zs=f.zcMax?f.zcMax-f.zcMin:0;
+ if(zs>worstZc) worstZc=zs;
+ $('#zcp').textContent=f.zcMax?f.zcMin+'–'+f.zcMax+' µs (spread '+zs+')':'none';
+ $('#worstZc').textContent=worstZc;
  $('#pads').innerHTML=s.pads.map(p=>`<tr><td>${p.name}</td><td>${p.filtered}</td><td>${p.baseline}</td><td>${p.touched?'YES':'-'}</td></tr>`).join('');
  $('#otaBanner').style.display=s.otaMode?'block':'none';
 }
@@ -257,10 +300,16 @@ $('#cfg').onsubmit=async e=>{e.preventDefault();
  if(j.cfg) applyCfg(j.cfg);   // reflect whatever the server actually stored (incl. clamping)
  $('#saved').textContent='saved';setTimeout(()=>$('#saved').textContent='',1500);
 };
+$('#raw').onsubmit=async e=>{e.preventDefault();
+ const level=Number(new FormData(e.target).get('level'));
+ await fetch('/api/raw',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({level})});
+ tick();
+};
 async function setOtaMode(on){
  await fetch('/api/ota-mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:on})});
  tick();
 }
+$('#worstReset').onclick=()=>{worst=worstZc=0;$('#worst').textContent=0;$('#worstZc').textContent=0;};
 $('#otaEnter').onclick=()=>setOtaMode(true);
 $('#otaExit').onclick=()=>setOtaMode(false);
 (async()=>{ const s=await (await fetch('/api/status')).json(); applyCfg(s.cfg); $('#build').textContent=s.buildId; })();
@@ -271,7 +320,9 @@ static String cfgJson() {
   return "{\"touchThr\":" + String(g_cfg.touchThr) +
          ",\"relThr\":"   + String(g_cfg.relThr) +
          ",\"minLevel\":" + String(g_cfg.minLevel) +
-         ",\"rampStep\":" + String(g_cfg.rampStep) + "}";
+         ",\"rampStep\":" + String(g_cfg.rampStep) +
+         ",\"trimLo\":"   + String(g_cfg.trimLo) +
+         ",\"trimHi\":"   + String(g_cfg.trimHi) + "}";
 }
 
 static void sendStatusJson(PsychicResponse* response) {
@@ -290,6 +341,12 @@ static void sendStatusJson(PsychicResponse* response) {
   j += ",\"zcPulses\":" + String(lamp.zcPulses());
   j += ",\"rssi\":" + String(WiFi.RSSI());
   j += ",\"otaMode\":" + String(g_otaMode ? "true" : "false");
+  j += ",\"delayUs\":" + String(lamp.delayUs());
+  j += ",\"raw\":" + String(lamp.rawLevel());
+  const LampDimmer::FireStats f = lamp.takeFireStats();
+  j += ",\"fire\":{\"n\":" + String(f.count) + ",\"min\":" + String(f.minUs) +
+       ",\"max\":" + String(f.maxUs) + ",\"avg\":" + String(f.avgUs) +
+       ",\"zcMin\":" + String(f.zcMinUs) + ",\"zcMax\":" + String(f.zcMaxUs) + "}";
 
   j += ",\"pads\":[";
   for (size_t i = 0; i < 3; i++) {
@@ -346,13 +403,21 @@ static void registerWebRoutes() {
     g_cfg.relThr   = jsonU8(body, "relThr",   g_cfg.relThr,   1, 255);
     g_cfg.minLevel = jsonU8(body, "minLevel", g_cfg.minLevel, 1, 90);
     g_cfg.rampStep = jsonU8(body, "rampStep", g_cfg.rampStep, 1, 25);
+    g_cfg.trimLo   = jsonU8(body, "trimLo",   g_cfg.trimLo,   1, 95);
+    g_cfg.trimHi   = jsonU8(body, "trimHi",   g_cfg.trimHi,   g_cfg.trimLo + 1, 100);
 
     touch.setThresholds(g_cfg.touchThr, g_cfg.relThr);
-    lamp.setConfig(g_cfg.minLevel, g_cfg.rampStep);
+    lamp.setConfig(g_cfg.minLevel, g_cfg.rampStep, g_cfg.trimLo, g_cfg.trimHi);
     saveConfig();
 
     String resp = "{\"ok\":true,\"cfg\":" + cfgJson() + "}";
     return response->send(200, "application/json", resp.c_str());
+  });
+
+  server.on("/api/raw", HTTP_POST, [](PsychicRequest* request, PsychicResponse* response) {
+    if (g_otaMode) return response->send(409, "application/json", "{\"ok\":false}");
+    lamp.setRaw(jsonU8(request->body(), "level", 0, 0, 100));
+    return response->send(200, "application/json", "{\"ok\":true}");
   });
 
   server.on("/api/ota-mode", HTTP_POST, [](PsychicRequest* request, PsychicResponse* response) {
@@ -361,21 +426,28 @@ static void registerWebRoutes() {
     g_otaMode = jsonBool(body, "enabled", g_otaMode);
 
     if (g_otaMode && !wasOta) {
-      applyOn(false);           // known-off state before a flash
-      lamp.shutdownForOTA();    // stop rbdimmer's zero-cross ISR — see LampDimmer.h
-      log_w("OTA mode ENTERED — touch/MQTT frozen, dimmer shut down");
-      return response->send(200, "application/json", "{\"ok\":true}");
+      applyOn(false);   // known-off state before a flash
+      lamp.pause();     // gate off; the flash writes will postpone the dimmer ISRs
+      log_w("OTA mode ENTERED — touch/MQTT frozen, dimmer paused");
+    } else if (!g_otaMode && wasOta) {
+      lamp.resume();
+      log_w("OTA mode cancelled — dimmer resumed");
     }
+    return response->send(200, "application/json", "{\"ok\":true}");
+  });
 
-    if (!g_otaMode && wasOta) {
-      // rbdimmer was torn down entering OTA mode and can't be safely
-      // re-initialized in place — reboot for a clean restart instead.
-      log_w("OTA mode cancelled — rebooting to restore the dimmer");
-      esp_err_t res = response->send(200, "application/json", "{\"ok\":true,\"rebooting\":true}");
-      delay(200);
-      ESP.restart();
-      return res;
-    }
+  // Which core/level every interrupt landed on — the dimmer's zero-cross and
+  // timer interrupts should be on core 1 (S3), away from WiFi on core 0.
+  server.on("/api/intr", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+    char*  buf = nullptr;
+    size_t len = 0;
+    FILE*  f   = open_memstream(&buf, &len);
+    if (!f) return response->send(500, "text/plain", "open_memstream failed");
+    esp_intr_dump(f);
+    fclose(f);
+    esp_err_t res = response->send(200, "text/plain", buf);
+    free(buf);
+    return res;
 
     return response->send(200, "application/json", "{\"ok\":true}");
   });
@@ -419,16 +491,26 @@ void setup() {
 
   loadConfig();
 
+#ifdef BENCH_FAKE_ZC
+  // 120 Hz, ~5% duty: one short rising-edge pulse per 60 Hz half-cycle.
+  ledcAttach(PIN_BENCH_ZC_OUT, 120, 12);
+  ledcWrite(PIN_BENCH_ZC_OUT, 205);
+  log_w("BENCH build: fake zero-cross on D4 — jumper D4 to D2");
+#endif
+
   if (!lamp.begin(PIN_DIMMER_ZC, PIN_DIMMER_DIM))
     log_e("dimmer init failed — lamp control unavailable");
-  lamp.setConfig(g_cfg.minLevel, g_cfg.rampStep);
+  lamp.setConfig(g_cfg.minLevel, g_cfg.rampStep, g_cfg.trimLo, g_cfg.trimHi);
 
-  // Bit-banged I2C on D0/D1 — the ESP32-C6 hardware I2C driver can't read
-  // (arduino-esp32 #11374). See lib/TouchPanel.
+  // Bit-banged I2C on D0/D1 — the hardware I2C driver's reads are broken on
+  // arduino-esp32 >= 3.2 (#11374, reported on S3 and C6). See lib/TouchPanel.
   if (!touch.begin(PIN_SDA, PIN_SCL, 0x5A))
     log_e("touch panel init failed — touch control unavailable");
   touch.setThresholds(g_cfg.touchThr, g_cfg.relThr);
 
+  // Credentials come from arduino_secrets.h every boot; don't rewrite them to
+  // flash on each (re)connect — flash writes stall both cores' interrupts.
+  WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
   WiFi.setHostname(HOSTNAME);
   // Modem sleep saves power between beacons at the cost of occasional latency
@@ -456,11 +538,14 @@ static void rampTick(int8_t dir) {
 }
 
 void loop() {
+  lamp.tick();
   checkWiFi();
   ensureNetServices();
   ArduinoOTA.handle();
+#ifndef BENCH_FAKE_ZC
   checkMQTT();
   mqtt.loop();   // onMqttMessage() self-guards on g_otaMode
+#endif
 
   // OTA mode: lamp is already off (see /api/ota-mode), touch is frozen so a
   // stray gesture can't do anything while a flash is imminent/in progress.
