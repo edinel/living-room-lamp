@@ -1,18 +1,21 @@
 {
- "ts": "2026-09-30T20:44:32.160",
+ "ts": "2026-09-30T23:08:10.441",
  "type": "set",
- "key": "trim-window",
+ "key": "fire-jitter",
  "fields": {
-  "status": "open"
+  "status": "done"
  },
- "text": "map user 1-100 onto linear dimmer window ~20..70 (measured on Philips BA11); persist lo/hi in NVS, expose on tuning page",
+ "text": "own interrupt-driven firing (ZC ISR + gptimer, level 3, core 1 on S3); bench xiao_s3_bench worst fire spread 57us/1min, 60us/10min under web load vs ~850us on C6+rbdimmer; /api/intr shows GPIO+TG0_T0 on CPU1",
+ "evidence": [
+  "commit:97e808d"
+ ],
  "author": "edinel",
  "origin": {
-  "host": "Nuitari.local.solace.org",
+  "host": "Nuitari.local",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 39308,
+  "pid": 41832,
   "branch": "main",
-  "head": "5bf3688",
+  "head": "d92afb7",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
   "session_source": "CLAUDE_CODE_SESSION_ID"
  }
