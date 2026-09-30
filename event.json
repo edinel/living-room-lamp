@@ -1,16 +1,16 @@
 {
- "ts": "2026-09-30T23:08:10.568",
+ "ts": "2026-09-30T23:08:10.662",
  "type": "set",
- "key": "trim-window",
+ "key": "s3-swap",
  "fields": {
   "status": "open"
  },
- "text": "implemented in 97e808d (default 20..70, tunable/persisted on page); still needs tuning on the real bulb after the S3 swap",
+ "text": "swap floor-box XIAO C6 -\u003e XIAO S3 (same footprint/D-pads); flash xiao_s3 over USB before mains, then OTA via xiao_s3_ota; re-sweep raw levels and set trim",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 41846,
+  "pid": 41861,
   "branch": "main",
   "head": "d92afb7",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
