@@ -1,16 +1,16 @@
 {
- "ts": "2026-09-27T22:07:28.971",
+ "ts": "2026-09-30T20:44:31.595",
  "type": "note",
  "key": "bulb-test",
- "kind": "gotcha",
- "text": "Ordered Philips Ultra Definition 3.5W BA11 LED Filament, E12 candelabra, explicitly TRIAC-dimmable, 300lm 2700K (3-pack) to retest with — see hardware.md 'LED dimmer compatibility bleeder' for the flicker/cutoff findings from the previous bulb. Bleeder resistor (bleeder-resistor key) should be installed alongside before retesting, since low-wattage filament LEDs are exactly the load type most prone to TRIAC holding-current dropout even when TRIAC-rated.",
+ "kind": "ruling",
+ "text": "2026-09-30 fire-timing measurement (raw linear 60 = set delay 3333us, steady, after reset): mains half-cycle 8324-8346us (spread \u003c=36us) -\u003e mains/ZC ruled out. Fires mostly 3347us (+14us fixed latency) but worst-case ~738us late at a steady level -\u003e esp_timer TASK dispatch (Arduino core has no ISR dispatch; C6 single-core, shares CPU with WiFi) delays some TRIAC fires ~15deg = wavering-brightness flicker. Bleeder (holding current) and 1000us gate pulse (ringing) hypotheses both failed to change the flicker band. Usable window on this bulb: raw 20 (floor) .. ~70 (above ~70 no visible brightening).",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 3645,
+  "pid": 39267,
   "branch": "main",
-  "head": "fef24ab",
+  "head": "5bf3688",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
   "session_source": "CLAUDE_CODE_SESSION_ID"
  }
