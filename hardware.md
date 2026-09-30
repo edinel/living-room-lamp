@@ -7,26 +7,37 @@ quick reference the firmware is written against.
 
 ## Microcontroller
 
-Seeed **XIAO ESP32-C6** (`board = seeed_xiao_esp32c6`). Pins below are given by
-silkscreen D-number.
+Seeed **XIAO ESP32-S3** (`board = seeed_xiao_esp32s3`, envs `xiao_s3` /
+`xiao_s3_ota`), replacing the original **XIAO ESP32-C6** (`xiao` / `xiao_ota`,
+still buildable). The S3 is dual core: the dimmer's firing interrupts run on
+core 1 and WiFi on core 0. The C6's single core let WiFi delay TRIAC fires by
+up to ~850 µs, which caused visible flicker. See
+[docs/dimming/led-flicker.md](docs/dimming/led-flicker.md). The two boards share
+the XIAO footprint, and pins below are given by silkscreen D-number, which the
+firmware uses, so each pad keeps its job across both.
 
 ## Pin map
 
-| Signal | XIAO pad | Direction | Goes to |
-|--------|----------|-----------|---------|
-| I2C SDA | D0 | — | desk-box cable → MPR121 SDA |
-| I2C SCL | D1 | — | desk-box cable → MPR121 SCL |
-| Dimmer `Z-C` | D2 | in (GPIO ISR) | dimmer module Z-C |
-| Dimmer `DIM` | D3 | out | dimmer module DIM |
-| 5V | 5V | in | HDR-15-5 `+V` (5.0 V) |
-| 3V3 | 3V3 | out | dimmer module VCC + desk-box cable VIN |
-| GND | GND | — | HDR-15-5 `−V` + dimmer module GND + desk-box cable GND |
+| Signal | XIAO pad | S3 GPIO | C6 GPIO | Direction | Goes to |
+|--------|----------|---------|---------|-----------|---------|
+| I2C SDA | D0 | 1 | 0 | — | desk-box cable → MPR121 SDA |
+| I2C SCL | D1 | 2 | 1 | — | desk-box cable → MPR121 SCL |
+| Dimmer `Z-C` | D2 | 3 | 2 | in (GPIO ISR) | dimmer module Z-C |
+| Dimmer `DIM` | D3 | 4 | 21 | out | dimmer module DIM |
+| 5V | 5V | — | — | in | HDR-15-5 `+V` (5.0 V) |
+| 3V3 | 3V3 | — | — | out | dimmer module VCC + desk-box cable VIN |
+| GND | GND | — | — | — | HDR-15-5 `−V` + dimmer module GND + desk-box cable GND |
 
 The XIAO is powered at its `5V` pad from the HDR-15-5; its onboard regulator
 supplies the `3V3` pad that feeds the MPR121 (over the cable) and the dimmer
 module's logic side. Do **not** connect USB while the HDR-15-5 is live — the `5V`
 pad ties straight to USB VBUS. First flash on the bench with mains disconnected;
 everything after is OTA.
+
+On the S3, D2 is GPIO3, a strapping pin. It's ignored unless the
+`STRAP_JTAG_SEL` eFuse is burned, which it isn't by default ([ESP-IDF JTAG
+docs](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-guides/jtag-debugging/configure-other-jtag.html)),
+so the Z-C signal on it at reset is harmless.
 
 I2C runs at **100 kHz** (`Wire.setClock(100000)`) for reliability over the 3–5 ft
 inter-box cable. MPR121 address **0x5A** (ADDR tied to GND, default).
@@ -94,11 +105,16 @@ Microcontroller side — galvanically isolated from mains by the onboard opto:
 connect to any AC conductor.** The module senses the mains zero-crossing on its
 isolated side and outputs it as a logic pulse on `Z-C`; `DIM` is the gate trigger
 back to the module. VCC is taken from the XIAO `3V3` (not `5V`) so the `Z-C`
-output swings 0–3.3 V and stays within the C6's GPIO limit. The only neutral
+output swings 0–3.3 V and stays within the ESP32's GPIO limit. The only neutral
 connection anywhere near the dimmer is its mains-side `AC-N` screw terminal.
 
-Firmware uses `rbdimmerESP32` with `RBDIMMER_CURVE_LOGARITHMIC` (dimmable-LED
-bulb). Mains frequency is auto-detected (`rbdimmer_register_zero_cross(pin,0,0)`).
+Firmware (`lib/LampDimmer`, no third-party dimmer library) fires leading-edge:
+the zero-cross interrupt drops `DIM` and arms a one-shot hardware timer, and the
+timer interrupt raises `DIM` and holds it until the next zero-cross. Mains
+frequency is auto-detected from 50 clean half-cycles. Brightness 1–100 maps
+linearly onto a conduction-% trim window (see Tuning). The earlier
+`rbdimmerESP32` fired from the esp_timer task, which WiFi could delay; see
+[docs/dimming/led-flicker.md](docs/dimming/led-flicker.md).
 
 ## Touch panel (Adafruit MPR121, #1982)
 
@@ -117,15 +133,16 @@ is a single-wire connection to its channel — no per-pad ground.
 ### I2C is bit-banged, not hardware
 
 `lib/TouchPanel` drives the MPR121 with a software (GPIO-toggled) I2C
-implementation on `D0`/`D1`, **not** `Wire`. The ESP32-C6 hardware I2C (Arduino
-core ≥ 3.2, "i2c-ng" driver) returns zeros / `ESP_ERR_INVALID_STATE` on every
-register *read* — a known upstream regression,
-[espressif/arduino-esp32 #11374](https://github.com/espressif/arduino-esp32/issues/11374).
-Address-ACK and writes work; reads do not. Confirmed on this board with a boot
-probe (writes ACKed, `CONFIG1`/`CONFIG2` reads came back `0x00`). The only fix
-from Espressif's side is core 3.1.3, which would drag the whole platform (and the
-rbdimmer / PsychicHttp builds) backwards, so the workaround lives in `TouchPanel`
-instead. Revisit if the driver is ever fixed — `git log` for `bit-bang`.
+implementation on `D0`/`D1`, **not** `Wire`. Hardware I2C on Arduino core ≥ 3.2
+(the "i2c-ng" driver) returns zeros / `ESP_ERR_INVALID_STATE` on every register
+*read*. This is a known upstream regression,
+[espressif/arduino-esp32 #11374](https://github.com/espressif/arduino-esp32/issues/11374),
+originally reported on an S3 and also seen on the C3 and C6. Address-ACK and
+writes work; reads don't. It was confirmed on the C6 with a boot probe (writes
+ACKed, `CONFIG1`/`CONFIG2` reads came back `0x00`). A comment on the issue says
+core 3.3.5 works; that's unverified here. The bit-bang code doesn't disable
+interrupts, so it can't delay the dimmer interrupts. Revisit if the driver is
+confirmed fixed — `git log` for `bit-bang`.
 
 Gestures (all multi-pad AND, for TRIAC-noise rejection):
 
@@ -151,33 +168,28 @@ Copied verbatim from the build spec — **hot is the only conductor ever switche
 - **Ground** runs straight through, wall plug → outlet pigtail green lead.
 - Recommended: upstream inline GFCI adapter between wall outlet and this device.
 
-## LED dimmer compatibility bleeder
+## LED dimming stabilizer (bleeder)
 
-A dimmable LED bulb tested in this build flickered around 20% brightness and
-cut out entirely above ~54% — the RobotDyn dimmer module's own documentation
-confirms this is an expected failure mode with LED loads, not a firmware or
-wiring bug: at low conduction angles an LED driver's current draw can fall
-below the TRIAC's minimum holding current, dropping it out mid-cycle.
-
-Fix: a **PCS LDS-120V LED Dimming Stabilizer** (120VAC, 1.8W, ETL listed)
-wired in parallel across the pigtail's black (switched load) and white
-(neutral) leads, at the point where they exit the dimmer toward the outlet
-pigtail. It supplies a small continuous bleed current so the TRIAC stays
-above its holding-current threshold through the load's full dimming range.
-Wiring must be parallel, not series (series wiring holds the LED off
-permanently, without damaging anything) — see the [installation
+A **PCS LDS-120V LED Dimming Stabilizer** (120VAC, 1.8W) is wired in parallel
+across the pigtail's black (switched load) and white (neutral) leads, where they
+exit the dimmer toward the outlet pigtail. It was added on the theory that the
+LED flicker was a TRIAC holding-current problem. It didn't change the flicker,
+which turned out to be late TRIAC fires (see
+[docs/dimming/led-flicker.md](docs/dimming/led-flicker.md)). It's left in
+place for now, since its effect at the very low end and on "off" glow is
+untested. It runs warm, which is within its 1.8 W rating. It must be wired in
+parallel, not series; series wiring holds the LED off permanently without
+damaging anything. See the [installation
 guide](https://manuals.homecontrols.com/manuals/PCLDS120V-Manual.pdf).
-
-Rejected: the Aeotec ZW150 "Bypass" (~$15, widely sold under similar
-"fix TRIAC flicker" marketing) — despite the label, it's a capacitive
-parasitic-power accessory for Aeotec's own Z-Wave Nano Dimmer smart switch
-(keeping its radio/MCU powered in a 2-wire no-neutral install), rated
-≤4W and not a resistive bleeder. Wrong device for a plain (non-smart)
-phase-cut dimmer's TRIAC holding-current problem.
 
 ## Tuning
 
-MPR121 thresholds, minimum-brightness floor, and ramp step are tuned live (and
-persisted to NVS) from the device's web page: `http://living-room-lamp.local.solace.org/`.
+MPR121 thresholds, minimum-brightness floor, ramp step, and the dimmer trim
+window are tuned live (and persisted to NVS) from the device's web page:
+`http://living-room-lamp.local.solace.org/`. The trim window maps brightness 1–100
+onto conduction % `[trimLo, trimHi]`. It defaults to 20..70, from a raw sweep of
+the Philips BA11: dark below about 20, no visible brightening above about 70.
+The page also has a raw conduction-% test input, live fire-timing and half-cycle
+spread readouts, and an `/api/intr` interrupt map.
 The spec is explicit that MPR121 thresholds must be set empirically once the
 copper pads are mounted — bench values on the bare board do not transfer.

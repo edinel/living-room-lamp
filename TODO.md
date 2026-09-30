@@ -14,12 +14,19 @@
   calls ESP-IDF's `gpio_set_level()`, which isn't IRAM-resident, so it panics
   if that fires while an OTA flash write has the cache disabled. Not power,
   not EMI, not mains state — all of those were red herrings chased first.
-  Fixed: `LampDimmer::shutdownForOTA()` (`rbdimmer_deinit()`) is called from
-  "Prepare for OTA update", removing the ISR entirely before any flash risk.
-  Cancelling OTA mode now reboots (no safe in-place resume after deinit).
-* Bulb in the socket: confirm `rbdimmerESP32` actually phase-cuts and dims —
-  incandescent first if available (cleanest test), then the real dimmable LED.
-  Watch for flicker/buzz/warmth. This is the one thing still unverified.
+  (Superseded: rbdimmer is gone; our own dimmer ISRs are non-IRAM, so flash
+  writes postpone them instead of panicking. "Prepare for OTA" now just pauses
+  the dimmer and cancel resumes it — no reboot.)
+* ~~LED flicker root-caused and fixed in firmware~~ ✓ — late TRIAC fires (up to
+  ~850 µs) from rbdimmer's esp_timer task sharing the C6's one core with WiFi.
+  Own interrupt-driven firing on S3 core 1; bench-proven worst spread 60 µs over
+  10 min. See [docs/dimming/led-flicker.md](docs/dimming/led-flicker.md).
+* Swap the floor box XIAO ESP32-C6 → XIAO ESP32-S3 (same footprint, same D-pads).
+  Flash `xiao_s3` over USB *before* it sees mains, then OTA via `xiao_s3_ota`.
+* On the real bulb after the swap: raw-level sweep again, confirm no flicker
+  across the range, and set trim low/high (defaults 20/70) on the tuning page.
+* Try pulling the LDS-120V bleeder after the swap — it didn't affect the
+  flicker; keep it only if it measurably helps the low end or "off" glow.
 * Tune MPR121 thresholds on the *mounted* copper pads via the web page
   (`http://living-room-lamp.local.solace.org/`) — bench values on the bare
   board do not transfer.
