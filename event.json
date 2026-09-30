@@ -1,16 +1,14 @@
 {
- "ts": "2026-09-30T23:08:10.662",
- "type": "set",
- "key": "s3-swap",
- "fields": {
-  "status": "open"
- },
- "text": "swap floor-box XIAO C6 -\u003e XIAO S3 (same footprint/D-pads); flash xiao_s3 over USB before mains, then OTA via xiao_s3_ota; re-sweep raw levels and set trim",
+ "ts": "2026-09-30T23:08:10.759",
+ "type": "note",
+ "key": "bleeder-resistor",
+ "kind": "carry-forward",
+ "text": "LDS-120V installed; no effect on flicker (cause was fire jitter, not holding current). Runs warm (within 1.8W rating). Try removing after S3 swap; keep only if it helps low end or off-glow.",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 41861,
+  "pid": 41895,
   "branch": "main",
   "head": "d92afb7",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
