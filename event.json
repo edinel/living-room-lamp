@@ -1,14 +1,16 @@
 {
- "ts": "2026-09-30T20:44:31.595",
- "type": "note",
- "key": "bulb-test",
- "kind": "ruling",
- "text": "2026-09-30 fire-timing measurement (raw linear 60 = set delay 3333us, steady, after reset): mains half-cycle 8324-8346us (spread \u003c=36us) -\u003e mains/ZC ruled out. Fires mostly 3347us (+14us fixed latency) but worst-case ~738us late at a steady level -\u003e esp_timer TASK dispatch (Arduino core has no ISR dispatch; C6 single-core, shares CPU with WiFi) delays some TRIAC fires ~15deg = wavering-brightness flicker. Bleeder (holding current) and 1000us gate pulse (ringing) hypotheses both failed to change the flicker band. Usable window on this bulb: raw 20 (floor) .. ~70 (above ~70 no visible brightening).",
+ "ts": "2026-09-30T20:44:32.027",
+ "type": "set",
+ "key": "fire-jitter",
+ "fields": {
+  "status": "open"
+ },
+ "text": "move TRIAC firing off rbdimmer's esp_timer task (up to ~0.7ms late fires measured) onto a hardware-timer ISR; design choice pending",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 39267,
+  "pid": 39294,
   "branch": "main",
   "head": "5bf3688",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
