@@ -176,6 +176,24 @@ Copied verbatim from the build spec — **hot is the only conductor ever switche
 - **Ground** runs straight through, wall plug → outlet pigtail green lead.
 - Recommended: upstream inline GFCI adapter between wall outlet and this device.
 
+**`AC-L IN` is fed by a pigtail.** The wall cord's hot is too thick to fit
+cleanly in the dimmer's screw terminal; forcing it leaves strands outside the
+clamp, which means poor contact and a stray strand that can short. Instead, a
+~3–4" 18 AWG stranded pigtail with a crimped bootlace ferrule goes into
+`AC-L IN`. Its other end goes into the existing line-side WAGO 221, alongside
+the breaker output and the HDR-15-5 `L`, so it needs a 3-port or larger. The
+WAGO 221 takes 24–12 AWG, so both gauges fit. Don't trim strands or tin the end
+with solder to make the thick wire fit. `AC-L LOAD` takes the outlet pigtail's
+black lead directly.
+
+Every mains joint is in a WAGO lever connector or screw terminal with no
+exposed copper; the hot glue over them is strain relief, not insulation (EVA
+hot glue softens around 60–85 °C). If the floor box is rebuilt in plywood
+instead of acrylic, the risk barely changes: standard acrylic is only UL 94 HB,
+the lowest flammability class, so it was never a fire barrier. Keep the
+LDS-120V bleeder, if it stays, spaced off the wood, and use grommets or
+strain-relief clamps where the cords pass through the laser-cut edges.
+
 **Build pitfall (hit during the S3 swap):** the dimmer's `AC-L IN` must be the
 line side, from the breaker, and `AC-L LOAD` the lamp side, toward the pigtail.
 With the two hots reversed, the module's zero-cross circuit senses the switched
