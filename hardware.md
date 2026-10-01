@@ -13,20 +13,21 @@ still buildable). The S3 is dual core: the dimmer's firing interrupts run on
 core 1 and WiFi on core 0. The C6's single core let WiFi delay TRIAC fires by
 up to ~850 µs, which caused visible flicker. See
 [docs/dimming/led-flicker.md](docs/dimming/led-flicker.md). The two boards share
-the XIAO footprint, and pins below are given by silkscreen D-number, which the
-firmware uses, so each pad keeps its job across both.
+the XIAO footprint, and pins below are given by silkscreen D-number. **Z-C and
+DIM are on swapped pads between the two boards**; on the S3 they were swapped
+for easier wire routing. The firmware selects per chip (`CONFIG_IDF_TARGET_ESP32S3`).
 
 ## Pin map
 
-| Signal | XIAO pad | S3 GPIO | C6 GPIO | Direction | Goes to |
-|--------|----------|---------|---------|-----------|---------|
-| I2C SDA | D0 | 1 | 0 | — | desk-box cable → MPR121 SDA |
-| I2C SCL | D1 | 2 | 1 | — | desk-box cable → MPR121 SCL |
-| Dimmer `Z-C` | D2 | 3 | 2 | in (GPIO ISR) | dimmer module Z-C |
-| Dimmer `DIM` | D3 | 4 | 21 | out | dimmer module DIM |
-| 5V | 5V | — | — | in | HDR-15-5 `+V` (5.0 V) |
-| 3V3 | 3V3 | — | — | out | dimmer module VCC + desk-box cable VIN |
-| GND | GND | — | — | — | HDR-15-5 `−V` + dimmer module GND + desk-box cable GND |
+| Signal | S3 pad (GPIO) | C6 pad (GPIO) | Direction | Goes to |
+|--------|---------------|---------------|-----------|---------|
+| I2C SDA | D0 (1) | D0 (0) | — | desk-box cable → MPR121 SDA |
+| I2C SCL | D1 (2) | D1 (1) | — | desk-box cable → MPR121 SCL |
+| Dimmer `Z-C` | **D3** (4) | D2 (2) | in (GPIO ISR) | dimmer module Z-C |
+| Dimmer `DIM` | **D2** (3) | D3 (21) | out | dimmer module DIM |
+| 5V | 5V | 5V | in | HDR-15-5 `+V` (5.0 V) |
+| 3V3 | 3V3 | 3V3 | out | dimmer module VCC + desk-box cable VIN |
+| GND | GND | GND | — | HDR-15-5 `−V` + dimmer module GND + desk-box cable GND |
 
 The XIAO is powered at its `5V` pad from the HDR-15-5; its onboard regulator
 supplies the `3V3` pad that feeds the MPR121 (over the cable) and the dimmer
@@ -34,10 +35,12 @@ module's logic side. Do **not** connect USB while the HDR-15-5 is live — the `
 pad ties straight to USB VBUS. First flash on the bench with mains disconnected;
 everything after is OTA.
 
-On the S3, D2 is GPIO3, a strapping pin. It's ignored unless the
+On the S3, D2 (`DIM`) is GPIO3, a strapping pin. It's ignored unless the
 `STRAP_JTAG_SEL` eFuse is burned, which it isn't by default ([ESP-IDF JTAG
-docs](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-guides/jtag-debugging/configure-other-jtag.html)),
-so the Z-C signal on it at reset is harmless.
+docs](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-guides/jtag-debugging/configure-other-jtag.html)).
+GPIO3 floats at reset, and the module's DIM-side indicator LED and resistor
+pull it low, so the TRIAC stays off while the S3 boots. That last part is
+inferred from RobotDyn's schematic, not measured.
 
 I2C runs at **100 kHz** (`Wire.setClock(100000)`) for reliability over the 3–5 ft
 inter-box cable. MPR121 address **0x5A** (ADDR tied to GND, default).
@@ -94,12 +97,12 @@ enumerate until corrected.)
 
 Microcontroller side — galvanically isolated from mains by the onboard opto:
 
-| Pin | Direction | To XIAO |
-|-----|-----------|---------|
-| GND | — | GND |
-| VCC | — | 3V3 |
-| Z-C | module → MCU | D2 |
-| DIM | MCU → module | D3 |
+| Pin | Direction | To XIAO S3 | To XIAO C6 |
+|-----|-----------|------------|------------|
+| GND | — | GND | GND |
+| VCC | — | 3V3 | 3V3 |
+| Z-C | module → MCU | D3 | D2 |
+| DIM | MCU → module | D2 | D3 |
 
 **All four of these pins are on the optically isolated low-voltage side — none
 connect to any AC conductor.** The module senses the mains zero-crossing on its

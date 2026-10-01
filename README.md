@@ -35,7 +35,7 @@ works with or without the network.
 ```sh
 pio run -e xiao_s3 -t upload        # flash the S3 over USB (mains disconnected!)
 pio run -e xiao_s3_ota -t upload    # flash over WiFi (living-room-lamp.local.solace.org)
-pio run -e xiao_s3_bench -t upload  # bench timing test: bare S3, jumper D4→D2, host lamp-bench
+pio run -e xiao_s3_bench -t upload  # bench timing test: bare S3, jumper D4→D3, host lamp-bench
 pio run -e xiao -t upload           # original C6 board (xiao_ota for WiFi)
 pio test -e native                  # gesture FSM unit tests
 ```

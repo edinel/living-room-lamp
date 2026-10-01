@@ -36,11 +36,17 @@
 // ---------------------------------------------------------------------------
 #define PIN_SDA        D0   // I2C to desk box
 #define PIN_SCL        D1
+#if CONFIG_IDF_TARGET_ESP32S3
+// S3 floor box: Z-C/DIM swapped vs the C6 for easier wire routing.
+#define PIN_DIMMER_ZC  D3   // dimmer module Z-C (input)
+#define PIN_DIMMER_DIM D2   // dimmer module DIM (output)
+#else
 #define PIN_DIMMER_ZC  D2   // dimmer module Z-C (input)
 #define PIN_DIMMER_DIM D3   // dimmer module DIM (output)
+#endif
 
 // Bench build (env xiao_s3_bench): no mains, no dimmer. D4 outputs a fake
-// 120 Hz zero-cross pulse train — jumper D4 to D2 — so fire timing can be
+// 120 Hz zero-cross pulse train — jumper D4 to the Z-C pad (D3 on the S3) — so fire timing can be
 // measured on a bare board. Own hostname and no MQTT, so it can't collide
 // with the real lamp or show up in Home Assistant.
 #ifdef BENCH_FAKE_ZC
@@ -495,7 +501,7 @@ void setup() {
   // 120 Hz, ~5% duty: one short rising-edge pulse per 60 Hz half-cycle.
   ledcAttach(PIN_BENCH_ZC_OUT, 120, 12);
   ledcWrite(PIN_BENCH_ZC_OUT, 205);
-  log_w("BENCH build: fake zero-cross on D4 — jumper D4 to D2");
+  log_w("BENCH build: fake zero-cross on D4 — jumper D4 to the Z-C pad");
 #endif
 
   if (!lamp.begin(PIN_DIMMER_ZC, PIN_DIMMER_DIM))

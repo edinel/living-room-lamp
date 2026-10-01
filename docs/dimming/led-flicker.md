@@ -63,7 +63,8 @@ callbacks run in the esp_timer *task*. The C6 has a single application core
    the slider in the range where the LED driver is already at full output.
 
 **Bench proof** on a bare XIAO S3 over USB (env `xiao_s3_bench`: fake 120 Hz
-zero-cross generated on D4 and jumpered to D2), with the tuning page polling and
+zero-cross generated on D4 and jumpered to the Z-C pad, which was D2 then and
+is D3 on the S3 since), with the tuning page polling and
 heavy page reloads in other tabs:
 
 - Worst fire spread: **57 µs** over ~1 minute, **60 µs** over 10 minutes
