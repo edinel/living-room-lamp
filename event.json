@@ -1,16 +1,21 @@
 {
- "ts": "2026-10-01T00:21:51.707",
- "type": "note",
+ "ts": "2026-10-01T00:28:53.251",
+ "type": "set",
  "key": "s3-swap",
- "kind": "gotcha",
- "text": "S3 bring-up fixes (2026-09-30): (1) boot-loop 'Stack canary watchpoint (ipc1)' from gpio_install_isr_service using the 1KB IPC task -\u003e direct esp_intr_alloc, commit 1d7f259; (2) MPR121 CONFIG2 0x20 after reset = stuck I2C slave -\u003e UM10204 bus clear, e23236e; (3) S3 pads: D2=DIM, D3=Z-C (swapped vs C6), 980e111. Firmware on the S3 matches 980e111 (built as d92afb7-dirty).",
+ "fields": {
+  "status": "done"
+ },
+ "text": "S3 in the floor box on mains: 60 Hz locked, Z-C +48/poll, steady fire spread ~25us. Fixes 1d7f259, e23236e, 980e111; docs in 56a93a6.",
+ "evidence": [
+  "report:edinel-2026-09-30"
+ ],
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 78160,
+  "pid": 81433,
   "branch": "main",
-  "head": "980e111",
+  "head": "56a93a6",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
   "session_source": "CLAUDE_CODE_SESSION_ID"
  }
