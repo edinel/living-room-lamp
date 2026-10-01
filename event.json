@@ -1,16 +1,14 @@
 {
- "ts": "2026-10-01T00:28:53.373",
- "type": "set",
- "key": "readout-error",
- "fields": {
-  "status": "open"
- },
- "text": "change fire stats to per-fire error vs armed delay so fades don't inflate worst spread (2353us artifact seen on a fade to 62%)",
+ "ts": "2026-10-01T00:50:38.999",
+ "type": "note",
+ "key": "bulb-test",
+ "kind": "ruling",
+ "text": "2026-09-30 on S3: ~3-4 s lag to reach full brightness is the Philips BA11 bulb's driver, not firmware. Raw 10-\u003e100 switched fire delay 7499us-\u003e150us immediately (confirmed on page) while the bulb still took ~4 s to brighten. Also: raw 10 lights (very dim) on S3, so trim low can likely go ~10-12 (C6-era floor of 20 was distorted by jitter). Next: compare a different dimmable bulb's 10-\u003e100 response if the lag matters.",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 81447,
+  "pid": 90028,
   "branch": "main",
   "head": "56a93a6",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
