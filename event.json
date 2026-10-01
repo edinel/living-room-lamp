@@ -1,19 +1,16 @@
 {
- "ts": "2026-10-01T00:28:53.251",
+ "ts": "2026-10-01T00:28:53.373",
  "type": "set",
- "key": "s3-swap",
+ "key": "readout-error",
  "fields": {
-  "status": "done"
+  "status": "open"
  },
- "text": "S3 in the floor box on mains: 60 Hz locked, Z-C +48/poll, steady fire spread ~25us. Fixes 1d7f259, e23236e, 980e111; docs in 56a93a6.",
- "evidence": [
-  "report:edinel-2026-09-30"
- ],
+ "text": "change fire stats to per-fire error vs armed delay so fades don't inflate worst spread (2353us artifact seen on a fade to 62%)",
  "author": "edinel",
  "origin": {
   "host": "Nuitari.local.solace.org",
   "cwd": "/Users/edinel/Library/CloudStorage/Dropbox/source/living-room-lamp",
-  "pid": 81433,
+  "pid": 81447,
   "branch": "main",
   "head": "56a93a6",
   "session": "8f5e917c-3c5b-4255-9a40-1195b9b0fae2",
