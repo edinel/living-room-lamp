@@ -21,6 +21,7 @@
 #include <esp_intr_alloc.h>
 
 #include "LampDimmer.h"
+#include "RampRepeater.h"
 #include "TouchPanel.h"
 #include "arduino_secrets.h"
 
@@ -69,7 +70,6 @@
 
 static const unsigned long WIFI_CHECK_MS = 30000;
 static const unsigned long MQTT_CHECK_MS =  5000;
-static const unsigned long RAMP_STEP_MS  =    40;   // min gap between ramp ticks
 
 // ---------------------------------------------------------------------------
 // Persisted tuning config (NVS) — editable from the web page
@@ -78,7 +78,9 @@ struct TuningConfig {
   uint8_t touchThr = TouchPanel::kDefaultTouchThreshold;
   uint8_t relThr   = TouchPanel::kDefaultReleaseThreshold;
   uint8_t minLevel = LampDimmer::kDefaultMinLevel;
-  uint8_t rampStep = LampDimmer::kDefaultRampStep;
+  uint8_t  rampStep = 5;     // % per hold-repeat step
+  uint8_t  tapStep  = 15;    // % per tap (first step of a press)
+  uint16_t rampMs   = 250;   // hold-repeat interval
   uint8_t trimLo   = LampDimmer::kDefaultTrimLo;
   uint8_t trimHi   = LampDimmer::kDefaultTrimHi;
 };
@@ -93,6 +95,8 @@ static void loadConfig() {
   g_cfg.relThr   = p.getUChar("relThr",   g_cfg.relThr);
   g_cfg.minLevel = p.getUChar("minLevel", g_cfg.minLevel);
   g_cfg.rampStep = p.getUChar("rampStep", g_cfg.rampStep);
+  g_cfg.tapStep  = p.getUChar("tapStep",  g_cfg.tapStep);
+  g_cfg.rampMs   = p.getUShort("rampMs",  g_cfg.rampMs);
   g_cfg.trimLo   = p.getUChar("trimLo",   g_cfg.trimLo);
   g_cfg.trimHi   = p.getUChar("trimHi",   g_cfg.trimHi);
   p.end();
@@ -110,6 +114,8 @@ static void saveConfig() {
   p.putUChar("relThr",   g_cfg.relThr);
   p.putUChar("minLevel", g_cfg.minLevel);
   p.putUChar("rampStep", g_cfg.rampStep);
+  p.putUChar("tapStep",  g_cfg.tapStep);
+  p.putUShort("rampMs",  g_cfg.rampMs);
   p.putUChar("trimLo",   g_cfg.trimLo);
   p.putUChar("trimHi",   g_cfg.trimHi);
   p.end();
@@ -120,6 +126,7 @@ static void saveConfig() {
 // Globals
 // ---------------------------------------------------------------------------
 TouchPanel        touch;
+RampRepeater      ramp;
 WiFiClient        wifiClient;
 PubSubClient      mqtt(wifiClient);
 PsychicHttpServer server;
@@ -255,7 +262,9 @@ Worst fire spread since page load: <b id="worst">0</b> µs &nbsp; worst half-cyc
 <label>Touch threshold <input name="touchThr" type="number" min="1" max="255"></label>
 <label>Release threshold <input name="relThr" type="number" min="1" max="255"></label>
 <label>Min brightness (%) <input name="minLevel" type="number" min="1" max="90"></label>
-<label>Ramp step (%) <input name="rampStep" type="number" min="1" max="25"></label>
+<label>Tap step (%) <input name="tapStep" type="number" min="1" max="50"></label>
+<label>Hold step (%) <input name="rampStep" type="number" min="1" max="25"></label>
+<label>Hold repeat interval (ms) <input name="rampMs" type="number" min="50" max="2000" step="10"></label>
 <label>Trim low: conduction % at brightness 1 <input name="trimLo" type="number" min="1" max="95"></label>
 <label>Trim high: conduction % at brightness 100 <input name="trimHi" type="number" min="2" max="100"></label>
 <button>Save</button> <span id="saved"></span>
@@ -269,7 +278,7 @@ Worst fire spread since page load: <b id="worst">0</b> µs &nbsp; worst half-cyc
 const $=s=>document.querySelector(s);
 let lastZc=null, worst=0, worstZc=0;
 function applyCfg(cfg){
- for(const k of ['touchThr','relThr','minLevel','rampStep','trimLo','trimHi']) $('[name='+k+']').value=cfg[k];
+ for(const k of ['touchThr','relThr','minLevel','tapStep','rampStep','rampMs','trimLo','trimHi']) $('[name='+k+']').value=cfg[k];
 }
 // Status (lamp/pads/fsm) polls every 400ms. Config fields are NOT re-synced
 // here — doing so fights the number-input spin buttons (a spinner click
@@ -327,6 +336,8 @@ static String cfgJson() {
          ",\"relThr\":"   + String(g_cfg.relThr) +
          ",\"minLevel\":" + String(g_cfg.minLevel) +
          ",\"rampStep\":" + String(g_cfg.rampStep) +
+         ",\"tapStep\":"  + String(g_cfg.tapStep) +
+         ",\"rampMs\":"   + String(g_cfg.rampMs) +
          ",\"trimLo\":"   + String(g_cfg.trimLo) +
          ",\"trimHi\":"   + String(g_cfg.trimHi) + "}";
 }
@@ -371,8 +382,9 @@ static void sendStatusJson(PsychicResponse* response) {
   response->send(200, "application/json", j.c_str());
 }
 
-static uint8_t jsonU8(const String& body, const char* key, uint8_t fallback,
-                      uint8_t lo, uint8_t hi) {
+// Returns a value clamped to [lo, hi], so callers can narrow it safely.
+static long jsonNum(const String& body, const char* key, long fallback,
+                    long lo, long hi) {
   int k = body.indexOf(String("\"") + key + "\"");
   if (k < 0) return fallback;
   int colon = body.indexOf(':', k);
@@ -380,7 +392,7 @@ static uint8_t jsonU8(const String& body, const char* key, uint8_t fallback,
   int start = colon + 1;
   while (start < (int)body.length() && (body[start] == ' ' || body[start] == '"')) start++;
   long v = body.substring(start).toInt();   // String::toInt() stops at the first non-digit
-  return (uint8_t)constrain(v, (long)lo, (long)hi);
+  return constrain(v, lo, hi);
 }
 
 static bool jsonBool(const String& body, const char* key, bool fallback) {
@@ -405,15 +417,18 @@ static void registerWebRoutes() {
 
   server.on("/api/config", HTTP_POST, [](PsychicRequest* request, PsychicResponse* response) {
     String body = request->body();
-    g_cfg.touchThr = jsonU8(body, "touchThr", g_cfg.touchThr, 1, 255);
-    g_cfg.relThr   = jsonU8(body, "relThr",   g_cfg.relThr,   1, 255);
-    g_cfg.minLevel = jsonU8(body, "minLevel", g_cfg.minLevel, 1, 90);
-    g_cfg.rampStep = jsonU8(body, "rampStep", g_cfg.rampStep, 1, 25);
-    g_cfg.trimLo   = jsonU8(body, "trimLo",   g_cfg.trimLo,   1, 95);
-    g_cfg.trimHi   = jsonU8(body, "trimHi",   g_cfg.trimHi,   g_cfg.trimLo + 1, 100);
+    g_cfg.touchThr = jsonNum(body, "touchThr", g_cfg.touchThr, 1, 255);
+    g_cfg.relThr   = jsonNum(body, "relThr",   g_cfg.relThr,   1, 255);
+    g_cfg.minLevel = jsonNum(body, "minLevel", g_cfg.minLevel, 1, 90);
+    g_cfg.tapStep  = jsonNum(body, "tapStep",  g_cfg.tapStep,  1, 50);
+    g_cfg.rampStep = jsonNum(body, "rampStep", g_cfg.rampStep, 1, 25);
+    g_cfg.rampMs   = jsonNum(body, "rampMs",   g_cfg.rampMs,   50, 2000);
+    g_cfg.trimLo   = jsonNum(body, "trimLo",   g_cfg.trimLo,   1, 95);
+    g_cfg.trimHi   = jsonNum(body, "trimHi",   g_cfg.trimHi,   g_cfg.trimLo + 1, 100);
 
     touch.setThresholds(g_cfg.touchThr, g_cfg.relThr);
-    lamp.setConfig(g_cfg.minLevel, g_cfg.rampStep, g_cfg.trimLo, g_cfg.trimHi);
+    lamp.setConfig(g_cfg.minLevel, g_cfg.trimLo, g_cfg.trimHi);
+    ramp.setIntervalMs(g_cfg.rampMs);
     saveConfig();
 
     String resp = "{\"ok\":true,\"cfg\":" + cfgJson() + "}";
@@ -422,7 +437,7 @@ static void registerWebRoutes() {
 
   server.on("/api/raw", HTTP_POST, [](PsychicRequest* request, PsychicResponse* response) {
     if (g_otaMode) return response->send(409, "application/json", "{\"ok\":false}");
-    lamp.setRaw(jsonU8(request->body(), "level", 0, 0, 100));
+    lamp.setRaw(jsonNum(request->body(), "level", 0, 0, 100));
     return response->send(200, "application/json", "{\"ok\":true}");
   });
 
@@ -506,7 +521,8 @@ void setup() {
 
   if (!lamp.begin(PIN_DIMMER_ZC, PIN_DIMMER_DIM))
     log_e("dimmer init failed — lamp control unavailable");
-  lamp.setConfig(g_cfg.minLevel, g_cfg.rampStep, g_cfg.trimLo, g_cfg.trimHi);
+  lamp.setConfig(g_cfg.minLevel, g_cfg.trimLo, g_cfg.trimHi);
+  ramp.setIntervalMs(g_cfg.rampMs);
 
   // Bit-banged I2C on D0/D1 — the hardware I2C driver's reads are broken on
   // arduino-esp32 >= 3.2 (#11374, reported on S3 and C6). See lib/TouchPanel.
@@ -534,12 +550,15 @@ void setup() {
   configureOTA();
 }
 
-static void rampTick(int8_t dir) {
-  static unsigned long last = 0;
-  unsigned long now = millis();
-  if (now - last < RAMP_STEP_MS) return;
-  last = now;
-  lamp.nudge(dir);
+// One ramp step. Up from off lights the lamp at the floor instead of
+// requiring a toggle first; down from off does nothing.
+static void stepLamp(int8_t dir, uint8_t pct) {
+  if (!lamp.isOn()) {
+    if (dir < 0) return;
+    lamp.turnOnAtFloor();
+  } else {
+    lamp.nudge(dir, pct);
+  }
   publishState();
 }
 
@@ -557,10 +576,16 @@ void loop() {
   // stray gesture can't do anything while a flash is imminent/in progress.
   if (g_otaMode) return;
 
-  switch (touch.poll()) {
-    case Gesture::Toggle:   applyOn(!lamp.isOn());          break;
-    case Gesture::RampUp:   if (lamp.isOn()) rampTick(+1);  break;
-    case Gesture::RampDown: if (lamp.isOn()) rampTick(-1);  break;
-    case Gesture::None:                                     break;
+  if (touch.poll() == Gesture::Toggle) applyOn(!lamp.isOn());
+
+  // Ramp from the FSM *state*: poll() only reports on its 50 ms ticks, but the
+  // state persists between them, so the repeater sees an unbroken hold.
+  const TouchState ts = touch.state();
+  const int8_t dir = ts == TouchState::RampingUp   ?  1
+                   : ts == TouchState::RampingDown ? -1 : 0;
+  switch (ramp.update(dir, millis())) {
+    case RampRepeater::Step::First:  stepLamp(dir, g_cfg.tapStep);  break;
+    case RampRepeater::Step::Repeat: stepLamp(dir, g_cfg.rampStep); break;
+    case RampRepeater::Step::None:                                  break;
   }
 }

@@ -226,14 +226,12 @@ void LampDimmer::tick() {
   if ((uint32_t)esp_timer_get_time() - g_lastZcUs > kZcLossUs) gpio_set_level(g_dimPin, 0);
 }
 
-void LampDimmer::setConfig(uint8_t minLevel, uint8_t rampStep, uint8_t trimLo, uint8_t trimHi) {
+void LampDimmer::setConfig(uint8_t minLevel, uint8_t trimLo, uint8_t trimHi) {
   minLevel_ = constrain(minLevel, (uint8_t)1, (uint8_t)90);
-  rampStep_ = constrain(rampStep, (uint8_t)1, (uint8_t)25);
   trimLo_   = constrain(trimLo, (uint8_t)1, (uint8_t)95);
   trimHi_   = constrain(trimHi, (uint8_t)(trimLo_ + 1), (uint8_t)100);
   if (!fading_ && raw_ < 0) output(outLevel_);
-  log_i("LampDimmer config: minLevel=%u rampStep=%u trim=%u..%u",
-        minLevel_, rampStep_, trimLo_, trimHi_);
+  log_i("LampDimmer config: minLevel=%u trim=%u..%u", minLevel_, trimLo_, trimHi_);
 }
 
 void LampDimmer::output(uint8_t level) {
@@ -318,8 +316,14 @@ void LampDimmer::setBrightness(uint8_t pct) {
   log_i("Lamp brightness %u", pct);
 }
 
-void LampDimmer::nudge(int8_t dir) {
-  int next = (int)level_ + dir * (int)rampStep_;
+void LampDimmer::turnOnAtFloor() {
+  lastLevel_ = minLevel_;
+  level_     = minLevel_;
+  setOn(true);
+}
+
+void LampDimmer::nudge(int8_t dir, uint8_t step) {
+  int next = (int)level_ + dir * (int)step;
 
   // Dimming down through the floor turns the lamp off (with the normal fade)
   // instead of sticking at minLevel_ forever — the floor is a click-off point,

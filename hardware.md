@@ -13,7 +13,8 @@ still buildable). The S3 is dual core: the dimmer's firing interrupts run on
 core 1 and WiFi on core 0. The C6's single core let WiFi delay TRIAC fires by
 up to ~850 µs, which caused visible flicker. See
 [docs/dimming/led-flicker.md](docs/dimming/led-flicker.md). The two boards share
-the XIAO footprint, and pins below are given by silkscreen D-number. **Z-C and
+the XIAO footprint, and pins below are given by silkscreen D-number. The
+floor-box S3's WiFi MAC is `a4:cb:8f:df:c4:8c`. **Z-C and
 DIM are on swapped pads between the two boards**; on the S3 they were swapped
 for easier wire routing. The firmware selects per chip (`CONFIG_IDF_TARGET_ESP32S3`).
 
@@ -152,10 +153,14 @@ Gestures (all multi-pad AND, for TRIAC-noise rejection):
 | Touch | Action |
 |-------|--------|
 | A + B + C | toggle on/off (fade to 0 on off, restore last level on on) |
-| hold A + B | brightness up |
-| hold B + C | brightness down |
+| tap A + B | brightness up one tap step (default 15%). **From off: on at the floor (Min brightness)** |
+| hold A + B | after 500 ms, keep stepping up by the hold step (default 5%) every hold interval (default 250 ms) |
+| tap / hold B + C | same, downward. Stepping below the floor turns the lamp off; does nothing from off |
 
-`B` alone does nothing. A three-pad touch never registers as a two-pad ramp, and
+`B` alone does nothing. Tap step, hold step and hold interval are on the tuning
+page. The slow default repeat is there because this bulb's driver lags a
+brightness change by 3–4 s; a fast ramp would run ahead of what you can see.
+The repeat logic is `lib/GestureFsm/RampRepeater` (host-tested). A three-pad touch never registers as a two-pad ramp, and
 releasing one finger from a three-pad touch is drained, not read as a ramp —
 see `lib/GestureFsm/`.
 

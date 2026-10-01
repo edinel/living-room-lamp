@@ -19,7 +19,6 @@
 class LampDimmer {
 public:
   static constexpr uint8_t  kDefaultMinLevel = 10;   // dim-down click-off point (%)
-  static constexpr uint8_t  kDefaultRampStep = 2;    // % per ramp tick
   static constexpr uint8_t  kDefaultTrimLo   = 20;   // conduction % at brightness 1
   static constexpr uint8_t  kDefaultTrimHi   = 70;   // conduction % at brightness 100
   static constexpr uint16_t kFadeOffMs       = 300;  // toggle-off fade
@@ -29,14 +28,15 @@ public:
   bool begin(uint8_t zeroCrossPin, uint8_t dimPin);
   void tick();   // call every loop(): runs fades and the zero-cross-loss watchdog
 
-  void setConfig(uint8_t minLevel, uint8_t rampStep, uint8_t trimLo, uint8_t trimHi);
+  void setConfig(uint8_t minLevel, uint8_t trimLo, uint8_t trimHi);
 
   void setOn(bool on);               // on -> fade to last level; off -> fade to 0
   void setBrightness(uint8_t pct);   // absolute, clamped to [minLevel, 100]
+  void turnOnAtFloor();              // on at minLevel, ignoring the last level
 
-  // +1 / -1, one rampStep. Ramping down through minLevel turns the lamp off
+  // +1 / -1 by step %. Ramping down through minLevel turns the lamp off
   // (with the normal fade) rather than sticking at the floor.
-  void nudge(int8_t dir);
+  void nudge(int8_t dir, uint8_t step);
 
   bool    isOn() const       { return on_; }
   uint8_t brightness() const { return level_; }   // current target level, 0-100
@@ -74,7 +74,6 @@ private:
   uint8_t  outLevel_  = 0;     // level currently being output (moves during a fade)
   uint8_t  lastLevel_ = 60;    // restored on toggle-on
   uint8_t  minLevel_  = kDefaultMinLevel;
-  uint8_t  rampStep_  = kDefaultRampStep;
   uint8_t  trimLo_    = kDefaultTrimLo;
   uint8_t  trimHi_    = kDefaultTrimHi;
   int16_t  raw_       = -1;

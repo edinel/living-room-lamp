@@ -24,11 +24,12 @@ works with or without the network.
 
 | Path | What |
 | --- | --- |
-| `lib/GestureFsm/` | Pure gesture state machine (multi-pad AND, release-safe). Host-unit-tested. |
+| `lib/GestureFsm/` | Pure gesture state machine (multi-pad AND, release-safe) + `RampRepeater` (tap-to-step, hold-to-repeat). Host-unit-tested. |
 | `lib/TouchPanel/` | MPR121 wrapper + poll loop around `GestureFsm`. |
 | `lib/LampDimmer/` | Interrupt-driven TRIAC firing (ZC GPIO ISR + gptimer, core 1 on S3), trim window, fades, ramp, min-level floor, fire-timing stats. |
 | `src/main.cpp` | Glue: WiFi + MQTT/HA discovery + OTA + web tuning page + watchdogs. |
 | `test/test_gestures/` | `pio test -e native` — FSM behaviour incl. partial-release. |
+| `test/test_ramp/` | `pio test -e native` — tap/hold-repeat timing, incl. millis wraparound. |
 
 ## Build
 
@@ -45,6 +46,6 @@ and fill in WiFi + MQTT credentials.
 
 ## Tuning
 
-MPR121 thresholds, minimum brightness, ramp step, and the dimmer trim window are set live and persisted
+MPR121 thresholds, minimum brightness, tap/hold step sizes, hold-repeat interval, and the dimmer trim window are set live and persisted
 to NVS from `http://living-room-lamp.local.solace.org/` — no re-flash needed. Per the build
 spec, MPR121 thresholds must be tuned on the mounted copper pads.
