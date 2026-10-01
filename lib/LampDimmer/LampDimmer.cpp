@@ -2,7 +2,11 @@
 #include "sdkconfig.h"
 #include "driver/gpio.h"
 #include "driver/gptimer.h"
+#include "esp_intr_alloc.h"
 #include "esp_timer.h"
+#include "hal/gpio_ll.h"
+#include "soc/gpio_struct.h"
+#include "soc/interrupts.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -18,6 +22,9 @@ constexpr uint32_t kLockSamples = 50;
 // function pointers.
 gpio_num_t        g_dimPin = GPIO_NUM_NC;
 gptimer_handle_t  g_timer  = nullptr;
+intr_handle_t     g_zcIntr = nullptr;
+uint32_t          g_zcMask = 0;        // zero-cross pin bit in the low GPIO status word
+uint32_t          g_zcCore = 0;        // core the GPIO interrupt is allocated on
 volatile uint8_t  g_conduction  = 0;       // 0-100 %, 0 = don't fire
 volatile bool     g_paused      = false;
 volatile uint32_t g_halfCycleUs = 0;       // 0 until mains frequency is locked
@@ -85,6 +92,16 @@ void IRAM_ATTR zcIsr(void*) {
   }
 }
 
+// Raw GPIO-peripheral interrupt (we own ETS_GPIO_INTR_SOURCE; nothing else in
+// this firmware uses GPIO interrupts).
+void IRAM_ATTR gpioIsr(void*) {
+  uint32_t status = 0;
+  gpio_ll_get_intr_status(&GPIO, g_zcCore, &status);
+  if (!(status & g_zcMask)) return;
+  gpio_ll_clear_intr_status(&GPIO, g_zcMask);
+  zcIsr(nullptr);
+}
+
 // Fire: raise the gate and hold it until the next zero-cross drops it.
 bool IRAM_ATTR alarmCb(gptimer_handle_t, const gptimer_alarm_event_data_t*, void*) {
   if (g_paused) return false;
@@ -127,7 +144,7 @@ bool LampDimmer::initHw() {
   gpio_config_t in = {};
   in.pin_bit_mask = 1ULL << zcPin_;
   in.mode         = GPIO_MODE_INPUT;
-  in.intr_type    = GPIO_INTR_POSEDGE;
+  in.intr_type    = GPIO_INTR_DISABLE;   // enabled below, on our core only
   if (gpio_config(&in) != ESP_OK) return false;
 
   gptimer_config_t tc = {};
@@ -141,13 +158,21 @@ bool LampDimmer::initHw() {
   if (gptimer_register_event_callbacks(g_timer, &cbs, nullptr) != ESP_OK) return false;
   if (gptimer_enable(g_timer) != ESP_OK || gptimer_start(g_timer) != ESP_OK) return false;
 
-  // No ESP_INTR_FLAG_IRAM on purpose — see LampDimmer.h.
-  esp_err_t e = gpio_install_isr_service(ESP_INTR_FLAG_LEVEL3);
-  if (e == ESP_ERR_INVALID_STATE)
-    log_w("GPIO ISR service already installed elsewhere — zero-cross ISR core/priority not ours");
-  else if (e != ESP_OK)
+  // Allocate the GPIO interrupt directly, in this task. gpio_install_isr_service()
+  // does it via the IPC task instead, whose 1 KB stack overflowed when another
+  // interrupt landed mid-allocation (boot-loop panic: "Stack canary watchpoint
+  // triggered (ipc1)"). No ESP_INTR_FLAG_IRAM on purpose — see LampDimmer.h.
+  if (zcPin_ >= 32) return false;   // gpioIsr reads only the low status word
+  g_zcCore = xPortGetCoreID();
+  g_zcMask = 1UL << zcPin_;
+  if (esp_intr_alloc(ETS_GPIO_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3, gpioIsr, nullptr,
+                     &g_zcIntr) != ESP_OK) {
+    log_e("GPIO interrupt allocation failed (source already in use?)");
     return false;
-  if (gpio_isr_handler_add((gpio_num_t)zcPin_, zcIsr, nullptr) != ESP_OK) return false;
+  }
+  gpio_ll_clear_intr_status(&GPIO, g_zcMask);
+  gpio_ll_set_intr_type(&GPIO, zcPin_, GPIO_INTR_POSEDGE);
+  gpio_ll_intr_enable_on_core(&GPIO, g_zcCore, zcPin_);
 
   log_i("dimmer interrupts registered on core %d", xPortGetCoreID());
   return true;
