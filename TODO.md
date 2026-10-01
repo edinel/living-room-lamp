@@ -21,8 +21,16 @@
   ~850 µs) from rbdimmer's esp_timer task sharing the C6's one core with WiFi.
   Own interrupt-driven firing on S3 core 1; bench-proven worst spread 60 µs over
   10 min. See [docs/dimming/led-flicker.md](docs/dimming/led-flicker.md).
-* Swap the floor box XIAO ESP32-C6 → XIAO ESP32-S3 (same footprint, same D-pads).
-  Flash `xiao_s3` over USB *before* it sees mains, then OTA via `xiao_s3_ota`.
+* ~~Swap the floor box XIAO ESP32-C6 → XIAO ESP32-S3.~~ ✓ On mains: 60 Hz
+  locked, Z-C +48/poll, steady fire spread ~25 µs. Along the way: fixed an
+  intermittent boot-loop (IPC-task stack overflow during GPIO interrupt
+  registration), added an I2C bus-clear for a stuck MPR121 after resets,
+  swapped Z-C/DIM onto D3/D2, and hit a reversed dimmer IN/LOAD hot pair
+  (Z-C reads 0; see hardware.md's pitfall).
+* Fire-timing readout: report each fire's error against the delay it was armed
+  with, instead of the max−min spread across fires, so fades and level changes
+  stop inflating "worst spread". Small change in `LampDimmer` (store the armed
+  delay in `zcIsr`, subtract in `alarmCb`), shipped by OTA.
 * On the real bulb after the swap: raw-level sweep again, confirm no flicker
   across the range, and set trim low/high (defaults 20/70) on the tuning page.
 * Try pulling the LDS-120V bleeder after the swap — it didn't affect the

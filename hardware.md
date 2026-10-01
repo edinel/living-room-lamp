@@ -171,6 +171,14 @@ Copied verbatim from the build spec — **hot is the only conductor ever switche
 - **Ground** runs straight through, wall plug → outlet pigtail green lead.
 - Recommended: upstream inline GFCI adapter between wall outlet and this device.
 
+**Build pitfall (hit during the S3 swap):** the dimmer's `AC-L IN` must be the
+line side, from the breaker, and `AC-L LOAD` the lamp side, toward the pigtail.
+With the two hots reversed, the module's zero-cross circuit senses the switched
+output, which carries no voltage while the TRIAC is off. Everything else
+boots fine; the tuning page just shows **Z-C pulses: 0** and **Mains: not
+detected**. That's the same class of mistake as the HDR-15-5 pitfall above:
+something that needs line voltage wired to the switched side.
+
 ## LED dimming stabilizer (bleeder)
 
 A **PCS LDS-120V LED Dimming Stabilizer** (120VAC, 1.8W) is wired in parallel
@@ -194,5 +202,11 @@ onto conduction % `[trimLo, trimHi]`. It defaults to 20..70, from a raw sweep of
 the Philips BA11: dark below about 20, no visible brightening above about 70.
 The page also has a raw conduction-% test input, live fire-timing and half-cycle
 spread readouts, and an `/api/intr` interrupt map.
+
+The fire "spread" is max minus min of the actual fire delays in each poll
+window, so **any brightness change inflates it**. A fade from off to 62% swept the
+delay from ~6666 to ~4166 µs and showed a 2353 µs "worst spread" that wasn't
+jitter. Press **reset** only once the level is steady. On the S3 on mains, the
+steady-state window spread is ~25 µs.
 The spec is explicit that MPR121 thresholds must be set empirically once the
 copper pads are mounted — bench values on the bare board do not transfer.
