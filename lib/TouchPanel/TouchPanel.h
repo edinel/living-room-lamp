@@ -53,6 +53,7 @@ private:
   void    i2cStart();
   void    i2cRestart();
   void    i2cStop();
+  void    i2cBusClear();          // free a slave left mid-byte by an MCU reset
   bool    i2cWrite(uint8_t b);    // returns true if ACKed
   uint8_t i2cRead(bool ackAfter);
 

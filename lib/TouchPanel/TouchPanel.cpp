@@ -59,6 +59,19 @@ void TouchPanel::i2cStop() {
   sdaHigh(); i2cDelay();
 }
 
+// I2C "bus clear" (UM10204 §3.1.16): the MPR121 is powered from our 3V3, which
+// survives a USB flash / OTA reboot, so a reset mid-read can leave it holding
+// SDA low waiting for clocks — and the next transaction (the soft reset) is
+// lost. Nine SCL pulses with SDA released finish any partial byte, then STOP.
+void TouchPanel::i2cBusClear() {
+  sdaHigh();
+  for (uint8_t i = 0; i < 9; i++) {
+    sclLow();  i2cDelay();
+    sclHigh(); i2cDelay();
+  }
+  i2cStop();
+}
+
 bool TouchPanel::i2cWrite(uint8_t b) {
   for (uint8_t i = 0; i < 8; i++) {
     (b & 0x80) ? sdaHigh() : sdaLow();
@@ -139,6 +152,7 @@ bool TouchPanel::begin(uint8_t sdaPin, uint8_t sclPin, uint8_t i2cAddr) {
   sdaHigh();
   sclHigh();
   delay(1);
+  i2cBusClear();
 
   writeReg(REG_SOFTRESET, 0x63);
   delay(1);
